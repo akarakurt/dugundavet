@@ -909,19 +909,16 @@
         const allUnassigned = allGroupIds.filter(id => !assignedIds.has(id));
         const groupDraggable = isEditor && allUnassigned.length === allGroupIds.length;
         const groupOpen = poolCollapsed[gid] !== true;
-        return `<div class="pool-group">
+        return `<div class="pool-group" ${groupDraggable&&isEditor ? `draggable="true" ondragstart="window._poolGroupDragStart(event,'${gid}')" ondragend="window._dragEnd(event)"` : ''}>
           <div class="pool-group-header" onclick="window._togglePoolGroup('${gid}')"
-            style="cursor:pointer;justify-content:space-between">
+            style="cursor:${groupDraggable&&isEditor?'grab':'pointer'};justify-content:space-between">
             <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
-              <span class="col-chevron ${groupOpen?'open':''}" style="font-size:14px">›</span>
+              <span class="col-chevron ${groupOpen?'open':''}" style="font-size:14px" onclick="window._togglePoolGroup('${gid}');event.stopPropagation()">›</span>
               <div class="member-avatar ${avCls}" style="width:18px;height:18px;font-size:8px;border-width:1px;flex-shrink:0">${initials(g.headName)}</div>
               <span style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.headName}</span>
               <span style="font-size:11px;color:var(--text-muted);flex-shrink:0">(${people.length} kişi)</span>
             </div>
-            ${groupDraggable&&isEditor ? `<span class="drag-handle" onclick="event.stopPropagation()" draggable="true"
-              ondragstart="window._poolGroupDragStart(event,'${gid}')"
-              ondragend="window._dragEnd(event)"
-              style="font-size:16px;opacity:.6" title="Grubu masaya sürükle">⠿</span>` : ''}
+            ${groupDraggable&&isEditor ? `<span style="font-size:14px;opacity:.5;flex-shrink:0">⠿</span>` : ''}
           </div>
           ${groupOpen ? `<div class="pool-group-members">
             ${people.map(p => `<div class="unassigned-chip" draggable="true"
@@ -1109,9 +1106,11 @@
   window._dragEnd = function(e) {
     e.target.classList.remove('dragging');
     document.querySelectorAll('.table-drop-zone,.table-card').forEach(z => z.classList.remove('drag-over'));
+    dragData = null;
   };
   window._tableCardDragOver = function(e, tid) {
-    if (!dragData) return;
+    if (!dragData && !dragTid) return;
+    if (dragTid) return; // table reorder handled by header
     e.preventDefault(); e.stopPropagation();
     document.querySelectorAll('.table-card').forEach(c => c.classList.remove('drag-over'));
     e.currentTarget.classList.add('drag-over');
