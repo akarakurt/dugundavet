@@ -161,7 +161,7 @@
 
   /* TABLES TAB */
   .tables-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
-  .tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+  .tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;align-items:start}
   .table-card{background:white;border:1px solid var(--border);border-radius:10px;overflow:hidden}
   .table-card-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--ivory);border-bottom:1px solid var(--border)}
   .table-card-name{font-family:'Playfair Display',serif;font-size:14px;font-weight:500}
@@ -187,6 +187,8 @@
   .unassigned-chip:hover{border-color:var(--gold);background:var(--gold-light)}
   .unassigned-chip.dragging{opacity:.4}
   .table-card.drag-over{outline:2px solid var(--gold);outline-offset:2px}
+  .table-card.drag-over-top{border-left:3px solid var(--gold)}
+  .table-card.drag-over-bottom{border-right:3px solid var(--gold)}
 
   /* MODAL */
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(44,36,22,.45);align-items:center;justify-content:center;z-index:100}
@@ -509,6 +511,20 @@
     <div class="form-group"><label class="form-label">Masa Adı</label><input class="form-input" id="inp-table-name" placeholder="örn. Masa 1, Aile Masası..."></div>
     <div class="form-group"><label class="form-label">Kapasite</label><input class="form-input" type="number" id="inp-table-cap" placeholder="10" value="10" min="1" max="50"></div>
     <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('table-modal')">İptal</button><button class="btn-save" onclick="saveTable()">Ekle</button></div>
+  </div>
+</div>
+<!-- EDIT TABLE MODAL -->
+<div class="modal-overlay" id="edit-table-modal">
+  <div class="modal-box">
+    <div class="modal-title">Masayı Düzenle</div>
+    <input type="hidden" id="edit-table-id">
+    <div class="form-group"><label class="form-label">Masa Adı</label><input class="form-input" id="edit-table-name"></div>
+    <div class="form-group"><label class="form-label">Kapasite</label><input class="form-input" type="number" id="edit-table-cap" min="1" max="50"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('edit-table-modal')">İptal</button>
+      <button class="btn-cancel" onclick="window._deleteTableFromModal()" style="color:#991B1B;border-color:#FCA5A5">Masayı Sil</button>
+      <button class="btn-save" onclick="window.updateTable()">Kaydet</button>
+    </div>
   </div>
 </div>
 
@@ -936,29 +952,28 @@
     }
 
     // Tables
-    grid.innerHTML = Object.entries(tables).map(([tid,t]) => {
+    grid.innerHTML = Object.entries(tables).sort((a,b)=>(a[1].order||0)-(b[1].order||0)).map(([tid,t]) => {
       const seats = Object.entries(t.seats||{});
       const cap = t.capacity || 10;
       const full = seats.length >= cap;
       const bodyOpen = tableBodyCollapsed[tid] !== true;
-      return `<div class="table-card"
+      return `<div class="table-card" data-tid="${tid}"
         ondragover="window._tableCardDragOver(event,'${tid}')"
         ondragleave="window._tableCardDragLeave(event)"
         ondrop="window._drop(event,'${tid}')">
-        <div class="table-card-header">
-          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0" onclick="window._toggleTableBody('${tid}')">
-            <span class="col-chevron ${bodyOpen?'open':''}" style="font-size:14px;cursor:pointer">›</span>
-            ${isEditor
-              ? `<input class="table-name-input" value="${t.name}" onchange="window._updateTableName('${tid}',this.value)" onclick="event.stopPropagation()" style="font-family:'Playfair Display',serif;font-size:14px;font-weight:500;border:none;background:transparent;outline:none;color:var(--text);flex:1;min-width:0;cursor:text">`
-              : `<span class="table-card-name" style="flex:1">${t.name}</span>`}
+        <div class="table-card-header"
+          ${isEditor ? `draggable="true" ondragstart="window._tableDragStart(event,'${tid}')" ondragend="window._tableDragEnd(event)"` : ''}
+          ondragover="window._tableHeaderDragOver(event,'${tid}')"
+          ondragleave="window._tableHeaderDragLeave(event)"
+          ondrop="window._tableHeaderDrop(event,'${tid}')">
+          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;cursor:pointer" onclick="window._toggleTableBody('${tid}')">
+            ${isEditor ? `<span class="drag-handle" style="opacity:.5;font-size:16px;cursor:grab" onclick="event.stopPropagation()">⠿</span>` : ''}
+            <span class="col-chevron ${bodyOpen?'open':''}" style="font-size:14px">›</span>
+            <span class="table-card-name" style="flex:1">${t.name}</span>
           </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:11px;color:var(--text-muted)">Kap:</span>
-            ${isEditor
-              ? `<input type="number" value="${cap}" min="1" max="50" onchange="window._updateTableCap('${tid}',this.value)" onclick="event.stopPropagation()" style="width:40px;font-size:12px;border:1px solid var(--border);border-radius:5px;padding:2px 4px;background:var(--ivory);color:var(--text);outline:none;text-align:center">`
-              : `<span style="font-size:12px;color:${full?'#991B1B':'var(--text-muted)'}">${seats.length}/${cap}</span>`}
-            ${isEditor ? `<span style="font-size:12px;color:${full?'#991B1B':'var(--text-muted)'}">${seats.length}/${cap}</span>` : ''}
-            ${isEditor?`<button class="del-btn" style="font-size:14px" onclick="window._deleteTable('${tid}')">×</button>`:''}
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:${full?'#991B1B':'var(--text-muted)'}">${seats.length}/${cap}</span>
+            ${isEditor ? `<button class="edit-btn" style="font-size:16px" onclick="window._openEditTableModal('${tid}')" title="Düzenle">✎</button>` : ''}
           </div>
         </div>
         ${bodyOpen ? `<div class="table-seats">
@@ -1012,16 +1027,76 @@
     tableBodyCollapsed[tid] = !tableBodyCollapsed[tid];
     renderTables();
   };
-  window._updateTableName = function(tid, val) {
-    if (!isEditor || !val.trim()) return;
-    setSyncing('syncing');
-    update(ref(db, `tables/${tid}`), { name: val.trim() }).then(() => setSyncing('saved'));
-  };
-  window._updateTableCap = function(tid, val) {
+  window._openEditTableModal = function(tid) {
     if (!isEditor) return;
-    const cap = Math.max(1, parseInt(val)||1);
+    const t = tables[tid];
+    if (!t) return;
+    document.getElementById('edit-table-id').value = tid;
+    document.getElementById('edit-table-name').value = t.name;
+    document.getElementById('edit-table-cap').value = t.capacity || 10;
+    document.getElementById('edit-table-modal').classList.add('open');
+  };
+  window.updateTable = function() {
+    const tid = document.getElementById('edit-table-id').value;
+    const name = document.getElementById('edit-table-name').value.trim();
+    const cap = Math.max(1, parseInt(document.getElementById('edit-table-cap').value)||1);
+    if (!name) return;
     setSyncing('syncing');
-    update(ref(db, `tables/${tid}`), { capacity: cap }).then(() => setSyncing('saved'));
+    update(ref(db, `tables/${tid}`), { name, capacity: cap }).then(() => { setSyncing('saved'); closeModal('edit-table-modal'); });
+  };
+  window._deleteTableFromModal = function() {
+    const tid = document.getElementById('edit-table-id').value;
+    if (!isEditor || !tid) return;
+    if (confirm('Bu masayı silmek istediğinizden emin misiniz?')) {
+      setSyncing('syncing');
+      remove(ref(db, `tables/${tid}`)).then(() => { setSyncing('saved'); closeModal('edit-table-modal'); });
+    }
+  };
+  window._deleteTable = function(tid) {
+    if (!isEditor) return;
+    if (confirm('Bu masayı silmek istediğinizden emin misiniz?')) {
+      setSyncing('syncing');
+      remove(ref(db, `tables/${tid}`)).then(() => setSyncing('saved'));
+    }
+  };
+
+  // Table card drag-drop reorder
+  let dragTid = null;
+  window._tableDragStart = function(e, tid) {
+    dragTid = tid;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => { const el = document.querySelector(`.table-card[data-tid="${tid}"]`); if(el) el.style.opacity='.4'; }, 0);
+  };
+  window._tableDragEnd = function(e) {
+    if (dragTid) { const el = document.querySelector(`.table-card[data-tid="${dragTid}"]`); if(el) el.style.opacity=''; }
+    dragTid = null;
+    document.querySelectorAll('.table-card').forEach(c => c.classList.remove('drag-over-top','drag-over-bottom'));
+  };
+  window._tableHeaderDragOver = function(e, tid) {
+    if (!dragTid || dragTid === tid) return;
+    e.preventDefault(); e.stopPropagation();
+    document.querySelectorAll('.table-card').forEach(c => c.classList.remove('drag-over-top','drag-over-bottom'));
+    const el = document.querySelector(`.table-card[data-tid="${tid}"]`);
+    if (el) { const r = el.getBoundingClientRect(); el.classList.add(e.clientX < r.left + r.width/2 ? 'drag-over-top' : 'drag-over-bottom'); }
+  };
+  window._tableHeaderDragLeave = function(e) {
+    const card = e.currentTarget.closest('.table-card');
+    if (card && !card.contains(e.relatedTarget)) card.classList.remove('drag-over-top','drag-over-bottom');
+  };
+  window._tableHeaderDrop = function(e, targetTid) {
+    e.preventDefault(); e.stopPropagation();
+    if (!dragTid || dragTid === targetTid || !isEditor) return;
+    const el = document.querySelector(`.table-card[data-tid="${targetTid}"]`);
+    const rect = el ? el.getBoundingClientRect() : null;
+    const insertBefore = rect ? e.clientX < rect.left + rect.width/2 : false;
+    const order = Object.entries(tables).sort((a,b)=>(a[1].order||0)-(b[1].order||0)).map(([id])=>id);
+    const fi = order.indexOf(dragTid); let ti = order.indexOf(targetTid);
+    if (fi === -1 || ti === -1) return;
+    order.splice(fi,1); ti = order.indexOf(targetTid);
+    order.splice(insertBefore ? ti : ti+1, 0, dragTid);
+    const updates = {}; order.forEach((id,i) => { updates[`tables/${id}/order`] = i; });
+    setSyncing('syncing'); update(ref(db), updates).then(() => setSyncing('saved'));
+    dragTid = null;
   };
 
 
@@ -1418,9 +1493,14 @@
   };
   window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
   const EDITOR_PASSWORD = 'karakurt';
+  // Persist editor mode across page refreshes in same browser session
+  if (sessionStorage.getItem('editorMode') === '1') {
+    setTimeout(() => setEditorMode(true), 100);
+  }
 
   function setEditorMode(on) {
     isEditor = on;
+    sessionStorage.setItem('editorMode', on ? '1' : '0');
     const badge = document.getElementById('role-badge');
     ['add-gelin-row','add-damat-row','add-extra-btn','add-table-btn'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = isEditor?'':'none'; });
     badge.textContent = isEditor ? '✎ Editör Modu' : '👁 İzleyici';
