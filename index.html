@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Düğün Davet Takibi</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --cream:#FAF7F2;--ivory:#F3EDE3;--gold:#C9A96E;--gold-light:#E8D5B0;--gold-dark:#9B7A42;
+    --rose:#D4847A;--rose-light:#F0D0CC;--rose-dark:#A85C54;
+    --blue-col:#7BA4D4;--blue-light:#DBEAFE;--blue-dark:#3B6FA0;
+    --text:#2C2416;--text-muted:#8B7355;--border:rgba(201,169,110,0.25);
+  }
+  body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);font-size:14px}
+
+  .header{background:linear-gradient(135deg,#2C2416 0%,#3D3020 60%,#2C2416 100%);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--gold)}
+  .header-left{display:flex;align-items:center;gap:12px}
+  .header-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--gold-light);letter-spacing:.5px}
+  .header-subtitle{font-size:11px;color:rgba(201,169,110,.6);margin-top:2px}
+  .role-badge{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid;transition:all .2s}
+  .role-badge.editor{background:rgba(201,169,110,.2);border-color:var(--gold);color:var(--gold-light)}
+  .role-badge.viewer{background:rgba(107,114,128,.2);border-color:#9CA3AF;color:#D1D5DB}
+
+  .countdown{display:flex;gap:10px;align-items:center}
+  .cd-block{text-align:center;background:rgba(201,169,110,.15);border:1px solid rgba(201,169,110,.3);border-radius:8px;padding:5px 10px;min-width:44px}
+  .cd-num{font-family:'Playfair Display',serif;font-size:20px;color:var(--gold-light);line-height:1}
+  .cd-lbl{font-size:9px;color:rgba(201,169,110,.5);text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
+  .cd-sep{font-size:18px;color:rgba(201,169,110,.4);margin-bottom:4px}
+
+  .nav-tabs{display:flex;background:var(--ivory);border-bottom:1px solid var(--border);padding:0 16px}
+  .nav-tab{padding:11px 16px;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;user-select:none}
+  .nav-tab:hover{color:var(--gold-dark)}
+  .nav-tab.active{color:var(--gold-dark);border-bottom-color:var(--gold);background:rgba(201,169,110,.06)}
+
+  .main{padding:16px}
+  .loading-bar{text-align:center;padding:40px;color:var(--text-muted);font-size:14px}
+
+  .filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+  .filter-label{font-size:12px;color:var(--text-muted);font-weight:500}
+  .filter-btn{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:white;color:var(--text-muted);transition:all .2s;user-select:none}
+  .filter-btn:hover{border-color:var(--gold);color:var(--gold-dark)}
+  .filter-btn.active-filter{background:var(--gold);border-color:var(--gold);color:white}
+  .search-input{padding:4px 12px;border:1px solid var(--border);border-radius:20px;font-size:13px;background:white;color:var(--text);outline:none;margin-left:auto;width:160px}
+  .search-input:focus{border-color:var(--gold)}
+
+  .summary-bar{display:flex;align-items:center;background:white;border:1px solid var(--border);border-radius:10px;padding:10px 8px;margin-bottom:14px;flex-wrap:wrap;gap:2px}
+  .summary-item{display:flex;flex-direction:column;gap:3px;padding:4px 12px}
+  .summary-inline{display:flex;align-items:center;gap:5px}
+  .summary-label{font-size:13px;color:var(--text-muted);font-weight:500}
+  .summary-value{font-family:'Playfair Display',serif;font-size:22px;font-weight:500;line-height:1;color:var(--text)}
+  .summary-value.coming{color:#166534}
+  .summary-value.maybe{color:#92400E}
+  .summary-value.no{color:#991B1B}
+  .summary-divider{width:1px;height:44px;background:var(--border);margin:0 2px;flex-shrink:0}
+  .summary-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
+  .summary-side-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
+  .summary-side-dot.gelin{background:var(--rose)}
+  .summary-side-dot.damat{background:var(--blue-col)}
+
+  .columns-wrapper{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+  .column-header{display:flex;flex-direction:column;gap:0;padding:12px 14px;border-radius:10px 10px 0 0}
+  .col-gelin .column-header{background:linear-gradient(90deg,#F7E8E6,#FDF3F2);border:1px solid rgba(212,132,122,.3);border-bottom:none}
+  .col-damat .column-header{background:linear-gradient(90deg,#E8F0FA,#F0F6FD);border:1px solid rgba(123,164,212,.3);border-bottom:none}
+  .col-header-top{display:flex;align-items:center;justify-content:space-between}
+  .column-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:500}
+  .col-gelin .column-title{color:var(--rose-dark)}
+  .col-damat .column-title{color:var(--blue-dark)}
+  .column-count{font-size:12px;font-weight:500;padding:3px 10px;border-radius:12px}
+  .col-gelin .column-count{background:var(--rose-light);color:var(--rose-dark)}
+  .col-damat .column-count{background:var(--blue-light);color:var(--blue-dark)}
+  .col-chevron{font-size:16px;color:var(--text-muted);transition:transform .2s;flex-shrink:0;display:inline-block}
+  .col-chevron.open{transform:rotate(90deg)}
+  .column-header:hover{opacity:.9}
+  .heart-stats{display:flex;gap:8px;align-items:center;flex-shrink:0}
+  .heart-stat{display:flex;align-items:center;gap:4px}
+  .heart-icon{font-size:16px;line-height:1}
+  .heart-count{font-size:14px;font-weight:500;color:var(--text);line-height:1}
+  .heart-label{font-size:10px;color:var(--text-muted);margin-left:1px}
+
+  .cat-badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;display:inline-flex;align-items:center;white-space:nowrap;flex-shrink:0;border:1px solid}
+  .cat-akraba{background:#FEF3C7;border-color:#FCD34D;color:#92400E}
+  .cat-is{background:#DBEAFE;border-color:#93C5FD;color:#1E40AF}
+  .cat-okul{background:#D1FAE5;border-color:#6EE7B7;color:#065F46}
+  .cat-arkadas{background:#FCE7F3;border-color:#F9A8D4;color:#9D174D}
+  .cat-diger{background:#F1F5F9;border-color:#CBD5E1;color:#475569}
+
+  .column-body{border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;background:white;overflow:hidden}
+  .col-gelin .column-body{border-color:rgba(212,132,122,.2)}
+  .col-damat .column-body{border-color:rgba(123,164,212,.2)}
+  .add-group-row{padding:8px 12px;border-top:0.5px dashed var(--border)}
+
+  .family-group{border-bottom:0.5px solid var(--border)}
+  .family-group:last-child{border-bottom:none}
+  .family-group.drag-over-top{border-top:2px solid var(--gold)}
+  .family-group.drag-over-bottom{border-bottom:2px solid var(--gold)}
+  .family-group.dragging-group{opacity:.4}
+  .drag-handle{cursor:grab;color:var(--text-muted);font-size:14px;padding:0 4px;flex-shrink:0;opacity:.4;transition:opacity .15s;user-select:none}
+  .family-head:hover .drag-handle,.member-row:hover .drag-handle{opacity:1}
+  .member-row.drag-over-top{border-top:2px solid var(--gold)}
+  .member-row.drag-over-bottom{border-bottom:2px solid var(--gold)}
+  .member-row.dragging-member{opacity:.4}
+  .members-drop-zone{min-height:8px;transition:all .15s}
+  .members-drop-zone.drag-over{background:rgba(201,169,110,.1);border-radius:6px;min-height:32px}
+  .family-head{display:flex;align-items:center;padding:10px 12px;cursor:pointer;background:var(--ivory);transition:background .15s;user-select:none;gap:8px}
+  .family-head:hover{background:var(--gold-light)}
+  .chevron{font-size:14px;color:var(--text-muted);transition:transform .2s;flex-shrink:0}
+  .chevron.open{transform:rotate(90deg)}
+  .member-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;border:1.5px solid}
+  .avatar-gelin{background:var(--rose-light);border-color:var(--rose);color:var(--rose-dark)}
+  .avatar-damat{background:var(--blue-light);border-color:var(--blue-col);color:var(--blue-dark)}
+  .family-head-info{flex:1;min-width:0}
+  .family-head-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .family-head-meta{font-size:11px;color:var(--text-muted);margin-top:1px}
+
+  .member-row{display:flex;align-items:center;padding:7px 12px 7px 32px;border-bottom:0.5px solid rgba(201,169,110,.08);gap:6px;transition:background .1s}
+  .member-row:last-child{border-bottom:none}
+  .member-row:hover{background:rgba(201,169,110,.04)}
+  .tree-line{width:16px;height:16px;flex-shrink:0;position:relative}
+  .tree-line::before{content:'';position:absolute;left:0;top:50%;width:12px;height:1px;background:var(--gold-light)}
+  .tree-line.branch::after{content:'';position:absolute;left:0;top:0;width:1px;height:100%;background:var(--gold-light)}
+  .member-info{flex:1;min-width:0}
+  .member-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .member-relation{font-size:11px;color:var(--text-muted)}
+
+  .status-badge{padding:2px 7px;border-radius:10px;font-size:11px;font-weight:500;display:inline-flex;align-items:center;cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap;flex-shrink:0}
+  .badge-coming{background:#DCFCE7;border-color:#86EFAC;color:#166534}
+  .badge-maybe{background:#FEF3C7;border-color:#FCD34D;color:#92400E}
+  .badge-no{background:#FEE2E2;border-color:#FCA5A5;color:#991B1B}
+
+  .invite-badge{padding:2px 7px;border-radius:10px;font-size:11px;font-weight:500;display:inline-flex;align-items:center;cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap;flex-shrink:0}
+  .invite-sent{background:#EDE9FE;border-color:#C4B5FD;color:#5B21B6}
+  .invite-pending{background:#F1F5F9;border-color:#CBD5E1;color:#64748B}
+
+  .del-btn{background:none;border:none;color:#FCA5A5;cursor:pointer;font-size:16px;line-height:1;padding:0 2px;flex-shrink:0}
+  .edit-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0;transition:color .15s}
+  .edit-btn:hover{color:var(--gold-dark)}
+  .add-member-btn{display:block;width:100%;padding:5px 8px;background:none;border:1px dashed rgba(201,169,110,.4);border-radius:6px;color:var(--text-muted);font-size:11px;cursor:pointer;transition:all .2s;margin-top:2px;text-align:center}
+  .add-member-btn:hover{border-color:var(--gold);color:var(--gold-dark)}
+  .add-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--gold);color:white;border:none;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;transition:background .2s;width:100%;justify-content:center}
+  .add-btn:hover{background:var(--gold-dark)}
+  .viewer-notice{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:8px 14px;font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:8px;margin-bottom:12px}
+
+  /* BUDGET */
+  .budget-card{background:white;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .budget-card-title{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-weight:500}
+  .budget-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:.5px solid var(--border);font-size:13px}
+  .budget-row:last-child{border-bottom:none}
+  .budget-row-label{color:var(--text-muted)}
+  .budget-row-value{font-weight:500;color:var(--text)}
+  .budget-input-field{border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:13px;width:100%;margin-top:6px;background:var(--ivory);color:var(--text);outline:none;font-family:inherit}
+  .budget-input-field:focus{border-color:var(--gold)}
+  .extra-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:.5px solid var(--border)}
+  .extra-item:last-child{border-bottom:none}
+  .extra-name{flex:1;font-size:13px}
+  .extra-amount{font-size:13px;font-weight:500;min-width:72px;text-align:right}
+  .total-bar{background:#2C2416;color:var(--gold-light);border-radius:10px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+  .total-bar-label{font-size:13px;opacity:.7}
+  .total-bar-value{font-family:'Playfair Display',serif;font-size:22px;color:var(--gold)}
+
+  /* TABLES TAB */
+  .tables-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+  .table-card{background:white;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .table-card-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--ivory);border-bottom:1px solid var(--border)}
+  .table-card-name{font-family:'Playfair Display',serif;font-size:14px;font-weight:500}
+  .table-card-cap{font-size:11px;color:var(--text-muted)}
+  .table-seats{padding:8px 10px;min-height:80px}
+  .seat-item{display:flex;align-items:center;gap:8px;padding:4px 4px;border-radius:6px;cursor:grab;transition:background .1s;user-select:none}
+  .seat-item:hover{background:rgba(201,169,110,.08)}
+  .seat-item.dragging{opacity:.4}
+  .seat-avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;border:1px solid;flex-shrink:0}
+  .seat-name{font-size:12px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .seat-remove{background:none;border:none;color:#FCA5A5;cursor:pointer;font-size:14px;line-height:1;padding:0;opacity:0}
+  .seat-item:hover .seat-remove{opacity:1}
+  .table-drop-zone{border:2px dashed transparent;border-radius:6px;min-height:40px;transition:all .15s;padding:4px}
+  .table-drop-zone.drag-over{border-color:var(--gold);background:rgba(201,169,110,.06)}
+  .unassigned-pool{background:white;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+  .unassigned-title{font-size:12px;color:var(--text-muted);font-weight:500;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+  .unassigned-list{display:flex;flex-direction:column;gap:10px}
+  .pool-group{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .pool-group-header{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--ivory);cursor:grab;user-select:none}
+  .pool-group-header:active{cursor:grabbing}
+  .pool-group-members{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px}
+  .unassigned-chip{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 6px;border:1px solid var(--border);border-radius:20px;background:white;cursor:grab;font-size:12px;user-select:none;transition:background .1s}
+  .unassigned-chip:hover{border-color:var(--gold);background:var(--gold-light)}
+  .unassigned-chip.dragging{opacity:.4}
+  .table-card.drag-over{outline:2px solid var(--gold);outline-offset:2px}
+
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(44,36,22,.45);align-items:center;justify-content:center;z-index:100}
+  .modal-overlay.open{display:flex}
+  .modal-box{background:white;border-radius:14px;padding:22px;width:380px;max-width:95vw;box-shadow:0 20px 60px rgba(44,36,22,.2)}
+  .modal-title{font-family:'Playfair Display',serif;font-size:17px;margin-bottom:16px;color:var(--text)}
+  .form-group{margin-bottom:12px}
+  .form-label{font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.6px}
+  .form-input,.form-select{width:100%;padding:7px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--ivory);color:var(--text);outline:none;font-family:inherit}
+  .form-input:focus,.form-select:focus{border-color:var(--gold)}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+  .btn-cancel{padding:7px 16px;border:1px solid var(--border);border-radius:8px;background:white;color:var(--text-muted);font-size:13px;cursor:pointer;font-family:inherit}
+  .btn-save{padding:7px 16px;border:none;border-radius:8px;background:var(--gold);color:white;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit}
+  .btn-save:hover{background:var(--gold-dark)}
+  .sync-indicator{font-size:11px;color:rgba(201,169,110,.5);margin-left:8px}
+  .sync-indicator.syncing{color:var(--gold-light)}
+  .sync-indicator.saved{color:#4ADE80}
+
+  /* ── MOBILE ─────────────────────────────────────── */
+  @media (max-width: 640px) {
+    /* Header */
+    .header{flex-direction:column;align-items:flex-start;gap:10px;padding:12px 14px}
+    .header-left{width:100%;justify-content:space-between}
+    .header-title{font-size:17px}
+    .countdown{width:100%;justify-content:center;gap:6px}
+    .cd-block{min-width:38px;padding:4px 7px}
+    .cd-num{font-size:17px}
+    .cd-sep{font-size:15px}
+
+    /* Nav */
+    .nav-tabs{padding:0 8px}
+    .nav-tab{padding:11px 14px;font-size:14px}
+
+    /* Main padding */
+    .main{padding:10px}
+
+    /* Filter bar — horizontal scroll, no wrap */
+    .filter-bar{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;gap:6px;scrollbar-width:none}
+    .filter-bar::-webkit-scrollbar{display:none}
+    .filter-label{flex-shrink:0;font-size:13px}
+    .filter-btn{flex-shrink:0;white-space:nowrap;font-size:13px;padding:6px 14px}
+    .search-input{flex-shrink:0;width:140px;margin-left:4px;font-size:14px}
+
+    /* Summary bar — 2-column grid */
+    .summary-bar{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:8px 4px}
+    .summary-item{padding:6px 10px}
+    .summary-divider{display:none}
+    .summary-value{font-size:20px}
+    .summary-label{font-size:13px}
+
+    /* Columns — stack vertically */
+    .columns-wrapper{grid-template-columns:1fr}
+
+    .column-header{gap:6px;padding:12px 14px}
+    .col-header-top{flex-wrap:nowrap}
+    .heart-stats{gap:5px;flex-shrink:0}
+    .heart-icon{font-size:16px}
+    .heart-count{font-size:14px}
+    .heart-label{display:none}
+    .column-title{font-size:15px}
+    .column-count{font-size:13px;flex-shrink:0}
+
+    /* Member rows */
+    .member-row{padding:9px 10px 9px 30px;gap:8px}
+    .family-head{padding:11px 12px;gap:8px}
+    .family-head-name{font-size:14px}
+    .family-head-meta{font-size:12px}
+    .member-name{font-size:13px}
+    .member-relation{font-size:12px}
+    .status-badge,.invite-badge{font-size:12px;padding:4px 8px}
+    .cat-badge{font-size:12px;padding:3px 8px}
+    .edit-btn{font-size:20px;padding:0 4px}
+    .del-btn{font-size:20px;padding:0 4px}
+    .drag-handle{font-size:18px}
+    .member-avatar{width:30px;height:30px;font-size:12px}
+    .add-member-btn{font-size:13px;padding:8px}
+    .add-btn{font-size:14px;padding:8px 14px}
+
+    /* Budget */
+    .budget-card{padding:14px 16px}
+    .budget-row{font-size:14px}
+    .budget-row-label{font-size:13px}
+    .budget-card-title{font-size:12px}
+    .total-bar{padding:12px 16px}
+    .total-bar-label{font-size:14px}
+    .total-bar-value{font-size:20px}
+
+    /* Tables */
+    .tables-grid{grid-template-columns:1fr}
+    .pool-group-members{gap:6px}
+    .unassigned-chip{font-size:13px;padding:5px 10px 5px 7px}
+    .table-card-name{font-size:15px}
+    .seat-name{font-size:13px}
+    .seat-remove{opacity:1;font-size:18px}
+
+    /* Modals — bottom sheet */
+    .modal-overlay{align-items:flex-end}
+    .modal-box{width:100%;max-width:100%;border-radius:18px 18px 0 0;padding:22px 20px 36px;max-height:90vh;overflow-y:auto}
+    .modal-title{font-size:19px}
+    .form-label{font-size:12px}
+    .form-input,.form-select{font-size:16px;padding:10px 13px}
+    .btn-cancel,.btn-save{font-size:15px;padding:10px 20px}
+
+    /* Viewer notice */
+    .viewer-notice{font-size:13px;padding:8px 12px}
+
+    /* Drag handles always visible on mobile */
+    .drag-handle{opacity:.7}
+    .seat-remove{opacity:1}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div>
+      <div class="header-title">♡ Düğün Davet Takibi</div>
+      <div class="header-subtitle" id="wedding-date-label">Elif &amp; Mehmet</div>
+    </div>
+    <span class="sync-indicator" id="sync-indicator">●</span>
+    <div class="role-badge viewer" id="role-badge" onclick="toggleRole()" style="margin-left:auto">👁 İzleyici</div>
+  </div>
+  <div class="countdown" id="countdown"></div>
+</div>
+
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="switchTab('guests',this)">Davetliler</div>
+  <div class="nav-tab" onclick="switchTab('tables',this)">Masalar</div>
+  <div class="nav-tab" onclick="switchTab('budget',this)">Bütçe</div>
+</div>
+
+<div class="main">
+
+  <!-- DAVETLILER -->
+  <div id="tab-guests">
+    <div class="filter-bar">
+      <span class="filter-label">Filtre:</span>
+      <button class="filter-btn active-filter" onclick="setFilter('all',this)">Tümü</button>
+      <button class="filter-btn" onclick="setFilter('coming',this)" style="color:#166534;border-color:#86EFAC">💚 Gelecek</button>
+      <button class="filter-btn" onclick="setFilter('maybe',this)" style="color:#92400E;border-color:#FCD34D">💛 Belki</button>
+      <button class="filter-btn" onclick="setFilter('no',this)" style="color:#991B1B;border-color:#FCA5A5">❤️ Gelmeyecek</button>
+      <button class="filter-btn" onclick="setFilter('invite-pending',this)" style="color:#64748B;border-color:#CBD5E1">✉ Davetiye Bekliyor</button>
+      <span style="font-size:12px;color:var(--text-muted);font-weight:500;margin-left:4px">Yakınlık:</span>
+      <button class="filter-btn" onclick="setFilter('akraba',this)" style="color:#92400E;border-color:#FCD34D">👨‍👩‍👧 Akraba</button>
+      <button class="filter-btn" onclick="setFilter('is',this)" style="color:#1E40AF;border-color:#93C5FD">💼 İş</button>
+      <button class="filter-btn" onclick="setFilter('okul',this)" style="color:#065F46;border-color:#6EE7B7">🎓 Okul</button>
+      <button class="filter-btn" onclick="setFilter('arkadas',this)" style="color:#9D174D;border-color:#F9A8D4">🤝 Arkadaş</button>
+      <button class="filter-btn" onclick="setFilter('diger',this)" style="color:#475569;border-color:#CBD5E1">· Diğer</button>
+      <input class="search-input" type="text" placeholder="İsim ara..." oninput="searchFilter(this.value)">
+    </div>
+    <div id="viewer-notice" class="viewer-notice">👁 İzleyici modundasınız — değişiklik yapamazsınız.</div>
+    <div id="guests-loading" class="loading-bar">Veriler yükleniyor...</div>
+    <div id="guests-content" style="display:none">
+      <div class="summary-bar">
+        <div class="summary-item">
+          <div class="summary-label">Toplam Davetli</div>
+          <div class="summary-value" id="sum-total">0</div>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-item">
+          <div class="summary-inline"><span class="summary-dot" style="background:#4ADE80"></span><span class="summary-label">Gelecek</span></div>
+          <div class="summary-value coming" id="sum-coming">0</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-inline"><span class="summary-dot" style="background:#FCD34D"></span><span class="summary-label">Belki</span></div>
+          <div class="summary-value maybe" id="sum-maybe">0</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-inline"><span class="summary-dot" style="background:#F87171"></span><span class="summary-label">Gelmeyecek</span></div>
+          <div class="summary-value no" id="sum-no">0</div>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-item">
+          <div class="summary-inline"><span class="summary-side-dot gelin"></span><span class="summary-label">Gelin Tarafı</span></div>
+          <div class="summary-value" style="color:var(--rose-dark)" id="sum-gelin">0</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-inline"><span class="summary-side-dot damat"></span><span class="summary-label">Damat Tarafı</span></div>
+          <div class="summary-value" style="color:var(--blue-dark)" id="sum-damat">0</div>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-item">
+          <div class="summary-inline"><span class="summary-dot" style="background:#C4B5FD"></span><span class="summary-label">Davetiye Gönderildi</span></div>
+          <div class="summary-value" style="color:#5B21B6" id="sum-invite-sent">0</div>
+        </div>
+      </div>
+      <div class="columns-wrapper">
+        <div class="col-gelin">
+          <div class="column-header" onclick="toggleColumn('gelin')" style="cursor:pointer;user-select:none">
+            <div class="col-header-top">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="col-chevron open" id="col-chev-gelin">›</span>
+                <div class="column-title">🌸 Gelin Tarafı</div>
+              </div>
+              <div class="heart-stats">
+                <div class="heart-stat"><span class="heart-icon">💚</span><span class="heart-count" id="gelin-coming">0</span><span class="heart-label">Gelecek</span></div>
+                <div class="heart-stat"><span class="heart-icon">💛</span><span class="heart-count" id="gelin-maybe">0</span><span class="heart-label">Belki</span></div>
+                <div class="heart-stat"><span class="heart-icon">❤️</span><span class="heart-count" id="gelin-no">0</span><span class="heart-label">Gelmeyecek</span></div>
+              </div>
+              <span class="column-count" id="col-count-gelin">0 kişi</span>
+            </div>
+          </div>
+          <div class="column-body" id="col-body-gelin">
+            <div id="tree-gelin"></div>
+            <div class="add-group-row" id="add-gelin-row"><button class="add-btn" onclick="openAddModal('gelin')">+ Grup Ekle</button></div>
+          </div>
+        </div>
+        <div class="col-damat">
+          <div class="column-header" onclick="toggleColumn('damat')" style="cursor:pointer;user-select:none">
+            <div class="col-header-top">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="col-chevron open" id="col-chev-damat">›</span>
+                <div class="column-title">💙 Damat Tarafı</div>
+              </div>
+              <div class="heart-stats">
+                <div class="heart-stat"><span class="heart-icon">💚</span><span class="heart-count" id="damat-coming">0</span><span class="heart-label">Gelecek</span></div>
+                <div class="heart-stat"><span class="heart-icon">💛</span><span class="heart-count" id="damat-maybe">0</span><span class="heart-label">Belki</span></div>
+                <div class="heart-stat"><span class="heart-icon">❤️</span><span class="heart-count" id="damat-no">0</span><span class="heart-label">Gelmeyecek</span></div>
+              </div>
+              <span class="column-count" id="col-count-damat">0 kişi</span>
+            </div>
+          </div>
+          <div class="column-body" id="col-body-damat">
+            <div id="tree-damat"></div>
+            <div class="add-group-row" id="add-damat-row"><button class="add-btn" onclick="openAddModal('damat')">+ Grup Ekle</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MASALAR -->
+  <div id="tab-tables" style="display:none">
+    <div id="tables-loading" class="loading-bar">Veriler yükleniyor...</div>
+    <div id="tables-content" style="display:none">
+      <div class="tables-toolbar">
+        <button class="add-btn" id="add-table-btn" onclick="openTableModal()" style="width:auto">+ Masa Ekle</button>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:4px" id="tables-assign-info"></span>
+      </div>
+      <div class="unassigned-pool" id="unassigned-pool">
+        <div class="unassigned-title">Masaya Atanmamış Davetliler <span id="unassigned-count" style="color:var(--gold-dark)"></span></div>
+        <div class="unassigned-list" id="unassigned-list"></div>
+      </div>
+      <div class="tables-grid" id="tables-grid"></div>
+    </div>
+  </div>
+
+  <!-- BÜTÇE -->
+  <div id="tab-budget" style="display:none">
+    <div id="budget-loading" class="loading-bar">Veriler yükleniyor...</div>
+    <div id="budget-content" style="display:none">
+      <div class="budget-card">
+        <div class="budget-card-title">Kişi Başı Menü</div>
+        <input class="budget-input-field" type="number" id="per-person-cost" value="1500" oninput="saveBudgetField('perPerson',this.value)" style="max-width:220px">
+        <div style="margin-top:12px">
+          <div class="budget-row"><span class="budget-row-label">Toplam davetli</span><span class="budget-row-value" id="b-total">—</span></div>
+          <div class="budget-row"><span class="budget-row-label">✓ Kesin gelen</span><span class="budget-row-value" style="color:#166534" id="b-coming">—</span></div>
+          <div class="budget-row"><span class="budget-row-label">? Belki gelecek</span><span class="budget-row-value" style="color:#92400E" id="b-maybe">—</span></div>
+          <div class="budget-row"><span class="budget-row-label">Menü toplamı (kesin)</span><span class="budget-row-value" id="b-menu-total">—</span></div>
+          <div class="budget-row"><span class="budget-row-label">Menü toplamı (belki dahil)</span><span class="budget-row-value" style="color:var(--text-muted)" id="b-menu-maybe">—</span></div>
+        </div>
+      </div>
+      <div class="budget-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="budget-card-title" style="margin-bottom:0">Ekstralar</div>
+          <button class="add-btn" id="add-extra-btn" onclick="addExtra()" style="width:auto;padding:5px 12px;font-size:12px">+ Ekle</button>
+        </div>
+        <div id="extras-list"></div>
+        <div class="total-bar">
+          <span class="total-bar-label">Toplam Tahmini Bütçe</span>
+          <span class="total-bar-value" id="budget-grand-total">₺0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal-box">
+    <div class="modal-title">Yeni Aile Grubu Ekle</div>
+    <input type="hidden" id="modal-side">
+    <div class="form-group"><label class="form-label">Ana Kişi Adı</label><input class="form-input" id="inp-head-name" placeholder="örn. Ayşe Hanım & Ahmet Bey"></div>
+    <div class="form-group"><label class="form-label">Yakınlık Derecesi</label><input class="form-input" id="inp-head-relation" placeholder="örn. Teyze & Enişte"></div>
+    <div class="form-group"><label class="form-label">Yakınlık Kategorisi</label>
+      <select class="form-select" id="inp-head-category">
+        <option value="akraba">👨‍👩‍👧 Akraba</option>
+        <option value="is">💼 İş</option>
+        <option value="okul">🎓 Okul</option>
+        <option value="arkadas">🤝 Arkadaş</option>
+        <option value="diger">· Diğer</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Katılım Durumu</label><select class="form-select" id="inp-head-status"><option value="coming">✓ Gelecek</option><option value="maybe">? Belki</option><option value="no">✗ Gelmeyecek</option></select></div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('add-modal')">İptal</button><button class="btn-save" onclick="saveGroup()">Ekle</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="member-modal">
+  <div class="modal-box">
+    <div class="modal-title">Üye Ekle</div>
+    <input type="hidden" id="member-group-id">
+    <div class="form-group"><label class="form-label">Ad Soyad</label><input class="form-input" id="inp-member-name" placeholder="örn. Zeynep Demir"></div>
+    <div class="form-group"><label class="form-label">Yakınlık</label><input class="form-input" id="inp-member-relation" placeholder="örn. Kuzen, Kocası..."></div>
+    <div class="form-group"><label class="form-label">Katılım Durumu</label><select class="form-select" id="inp-member-status"><option value="coming">✓ Gelecek</option><option value="maybe">? Belki</option><option value="no">✗ Gelmeyecek</option></select></div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('member-modal')">İptal</button><button class="btn-save" onclick="saveMember()">Ekle</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="extra-modal">
+  <div class="modal-box">
+    <div class="modal-title">Ekstra Kalem Ekle</div>
+    <div class="form-group"><label class="form-label">Kalem Adı</label><input class="form-input" id="inp-extra-name" placeholder="örn. Pasta, Davetiye..."></div>
+    <div class="form-group"><label class="form-label">Tutar (₺)</label><input class="form-input" type="number" id="inp-extra-amount" placeholder="0"></div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('extra-modal')">İptal</button><button class="btn-save" onclick="saveExtra()">Ekle</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="table-modal">
+  <div class="modal-box">
+    <div class="modal-title">Masa Ekle</div>
+    <div class="form-group"><label class="form-label">Masa Adı</label><input class="form-input" id="inp-table-name" placeholder="örn. Masa 1, Aile Masası..."></div>
+    <div class="form-group"><label class="form-label">Kapasite</label><input class="form-input" type="number" id="inp-table-cap" placeholder="10" value="10" min="1" max="50"></div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('table-modal')">İptal</button><button class="btn-save" onclick="saveTable()">Ekle</button></div>
+  </div>
+</div>
+
+<!-- EDIT GROUP MODAL -->
+<div class="modal-overlay" id="edit-group-modal">
+  <div class="modal-box">
+    <div class="modal-title">Grubu Düzenle</div>
+    <input type="hidden" id="edit-group-id">
+    <div class="form-group"><label class="form-label">Ana Kişi Adı</label><input class="form-input" id="edit-head-name"></div>
+    <div class="form-group"><label class="form-label">Yakınlık Derecesi</label><input class="form-input" id="edit-head-relation"></div>
+    <div class="form-group"><label class="form-label">Yakınlık Kategorisi</label>
+      <select class="form-select" id="edit-head-category">
+        <option value="akraba">👨‍👩‍👧 Akraba</option>
+        <option value="is">💼 İş</option>
+        <option value="okul">🎓 Okul</option>
+        <option value="arkadas">🤝 Arkadaş</option>
+        <option value="diger">· Diğer</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Katılım Durumu</label>
+      <select class="form-select" id="edit-head-status">
+        <option value="coming">✓ Gelecek</option>
+        <option value="maybe">? Belki</option>
+        <option value="no">✗ Gelmeyecek</option>
+      </select>
+    </div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('edit-group-modal')">İptal</button><button class="btn-save" onclick="updateGroup()">Kaydet</button></div>
+  </div>
+</div>
+<!-- EDIT MEMBER MODAL -->
+<div class="modal-overlay" id="edit-member-modal">
+  <div class="modal-box">
+    <div class="modal-title">Üyeyi Düzenle</div>
+    <input type="hidden" id="edit-member-gid">
+    <input type="hidden" id="edit-member-mid">
+    <div class="form-group"><label class="form-label">Ad Soyad</label><input class="form-input" id="edit-member-name"></div>
+    <div class="form-group"><label class="form-label">Yakınlık</label><input class="form-input" id="edit-member-relation"></div>
+    <div class="form-group"><label class="form-label">Katılım Durumu</label>
+      <select class="form-select" id="edit-member-status">
+        <option value="coming">✓ Gelecek</option>
+        <option value="maybe">? Belki</option>
+        <option value="no">✗ Gelmeyecek</option>
+      </select>
+    </div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('edit-member-modal')">İptal</button><button class="btn-save" onclick="updateMember()">Kaydet</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="pw-modal">
+  <div class="modal-box" style="max-width:320px">
+    <div class="modal-title">Editör Şifresi</div>
+    <div class="form-group">
+      <label class="form-label">Şifre</label>
+      <input class="form-input" type="password" id="pw-input" placeholder="••••••••" onkeydown="pwKeydown(event)">
+      <div id="pw-error" style="display:none;margin-top:8px;font-size:12px;color:#991B1B;background:#FEE2E2;border-radius:6px;padding:6px 10px">Yanlış şifre. Tekrar deneyin.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('pw-modal')">İptal</button>
+      <button class="btn-save" onclick="submitPassword()">Giriş</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, onValue, update, remove, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBcmzwtZaMsDHqXIUrMZWIQV9-JARDx6Xg",
+    authDomain: "dugundavet-e55f2.firebaseapp.com",
+    databaseURL: "https://dugundavet-e55f2-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "dugundavet-e55f2",
+    storageBucket: "dugundavet-e55f2.firebasestorage.app",
+    messagingSenderId: "562410283231",
+    appId: "1:562410283231:web:40ff9526fbaefe6da1896a"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  let groups = {}, budget = { perPerson: 1500, extras: {} }, tables = {};
+  let isEditor = false, activeFilters = new Set(), currentSearch = '', collapsed = {};
+  let weddingDate = new Date('2025-06-15T18:00:00');
+  let dragData = null;
+
+  // COUNTDOWN
+  function updateCountdown() {
+    const now = new Date();
+    const diff = weddingDate - now;
+    const cd = document.getElementById('countdown');
+    if (diff <= 0) { cd.innerHTML = '<span style="color:var(--gold-light);font-size:13px">♡ Bugün!</span>'; return; }
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    cd.innerHTML = `
+      <div class="cd-block"><div class="cd-num">${days}</div><div class="cd-lbl">Gün</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-block"><div class="cd-num">${String(hours).padStart(2,'0')}</div><div class="cd-lbl">Saat</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-block"><div class="cd-num">${String(mins).padStart(2,'0')}</div><div class="cd-lbl">Dak</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-block"><div class="cd-num">${String(secs).padStart(2,'0')}</div><div class="cd-lbl">Sn</div></div>`;
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  // SYNC
+  function setSyncing(s) {
+    const el = document.getElementById('sync-indicator');
+    if (s === 'syncing') { el.textContent = '↻'; el.className = 'sync-indicator syncing'; }
+    else if (s === 'saved') { el.textContent = '●'; el.className = 'sync-indicator saved'; setTimeout(() => { el.textContent = '●'; el.className = 'sync-indicator'; }, 2000); }
+  }
+
+  // FIREBASE LISTENERS
+  onValue(ref(db, 'groups'), snap => {
+    groups = snap.val() || {};
+    document.getElementById('guests-loading').style.display = 'none';
+    document.getElementById('guests-content').style.display = '';
+    document.getElementById('tables-loading').style.display = 'none';
+    document.getElementById('tables-content').style.display = '';
+    render();
+    renderTables();
+  });
+  onValue(ref(db, 'budget'), snap => {
+    const d = snap.val();
+    if (d) { budget = { perPerson: d.perPerson || 1500, extras: d.extras || {} }; document.getElementById('per-person-cost').value = budget.perPerson; }
+    document.getElementById('budget-loading').style.display = 'none';
+    document.getElementById('budget-content').style.display = '';
+    renderExtras(); updateBudgetCalc();
+  });
+  onValue(ref(db, 'tables'), snap => {
+    tables = snap.val() || {};
+    renderTables();
+  });
+
+  // HELPERS
+  function initials(n) { return n.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase(); }
+  function nextStatus(s) { return s === 'coming' ? 'maybe' : s === 'maybe' ? 'no' : 'coming'; }
+  function statusBadge(s, gid, mid) {
+    const cls = s === 'coming' ? 'badge-coming' : s === 'maybe' ? 'badge-maybe' : 'badge-no';
+    const lbl = s === 'coming' ? '✓ Gelecek' : s === 'maybe' ? '? Belki' : '✗ Gelmeyecek';
+    const clk = isEditor ? `onclick="window._cycleStatus('${gid}','${mid||''}')" style="cursor:pointer"` : 'style="cursor:default"';
+    return `<span class="status-badge ${cls}" ${clk}>${lbl}</span>`;
+  }
+  function inviteBadge(invited, gid, mid) {
+    const sent = invited === true;
+    const cls = sent ? 'invite-sent' : 'invite-pending';
+    const lbl = sent ? '✉ Gönderildi' : '○ Bekliyor';
+    const clk = isEditor ? `onclick="window._toggleInvite('${gid}','${mid||''}')" style="cursor:pointer"` : 'style="cursor:default"';
+    return `<span class="invite-badge ${cls}" ${clk}>${lbl}</span>`;
+  }
+
+  // RENDER GUESTS
+  function getAllMembers() {
+    const all = [];
+    Object.values(groups).forEach(g => {
+      all.push({ status: g.status, side: g.side, invited: g.invited });
+      Object.values(g.members || {}).forEach(m => all.push({ status: m.status, side: g.side, invited: m.invited }));
+    });
+    return all;
+  }
+  function getSideStats(side) {
+    const all = getAllMembers().filter(m => m.side === side);
+    return { total: all.length, coming: all.filter(m=>m.status==='coming').length, maybe: all.filter(m=>m.status==='maybe').length, no: all.filter(m=>m.status==='no').length };
+  }
+  function updateHeaders() {
+    ['gelin','damat'].forEach(side => {
+      const s = getSideStats(side);
+      document.getElementById('col-count-'+side).textContent = s.total+' kişi';
+      document.getElementById(side+'-coming').textContent = s.coming;
+      document.getElementById(side+'-maybe').textContent = s.maybe;
+      document.getElementById(side+'-no').textContent = s.no;
+    });
+    const all = getAllMembers();
+    document.getElementById('sum-total').textContent = all.length;
+    document.getElementById('sum-coming').textContent = all.filter(m=>m.status==='coming').length;
+    document.getElementById('sum-maybe').textContent = all.filter(m=>m.status==='maybe').length;
+    document.getElementById('sum-no').textContent = all.filter(m=>m.status==='no').length;
+    document.getElementById('sum-gelin').textContent = all.filter(m=>m.side==='gelin').length;
+    document.getElementById('sum-damat').textContent = all.filter(m=>m.side==='damat').length;
+    document.getElementById('sum-invite-sent').textContent = all.filter(m=>m.invited===true).length;
+  }
+
+  function catBadge(cat) {
+    if (!cat) return '';
+    const map = { akraba:['cat-akraba','👨‍👩‍👧 Akraba'], is:['cat-is','💼 İş'], okul:['cat-okul','🎓 Okul'], arkadas:['cat-arkadas','🤝 Arkadaş'], diger:['cat-diger','· Diğer'] };
+    const [cls, lbl] = map[cat] || ['cat-diger', cat];
+    return `<span class="cat-badge ${cls}">${lbl}</span>`;
+  }
+
+  function renderColumn(side) {
+    const el = document.getElementById('tree-'+side);
+    const s = currentSearch.toLowerCase();
+    const statusFilters = ['coming','maybe','no'].filter(f => activeFilters.has(f));
+    const catFilters = ['akraba','is','okul','arkadas','diger'].filter(f => activeFilters.has(f));
+    const inviteFilter = activeFilters.has('invite-pending');
+
+    let filtered = Object.entries(groups).filter(([,g]) => g.side === side).filter(([,g]) => {
+      if (s) {
+        const inHead = g.headName.toLowerCase().includes(s) || (g.relation||'').toLowerCase().includes(s);
+        const inMems = Object.values(g.members||{}).some(m => m.name.toLowerCase().includes(s));
+        if (!inHead && !inMems) return false;
+      }
+      // category filter
+      if (catFilters.length > 0 && !catFilters.includes(g.category)) return false;
+      // status filter
+      if (statusFilters.length > 0) {
+        const headMatch = statusFilters.includes(g.status);
+        const memMatch = Object.values(g.members||{}).some(m => statusFilters.includes(m.status));
+        if (!headMatch && !memMatch) return false;
+      }
+      // invite filter
+      if (inviteFilter) {
+        if (g.invited !== true) return true;
+        return Object.values(g.members||{}).some(m => m.invited !== true);
+      }
+      return true;
+    });
+
+    const avCls = side === 'gelin' ? 'avatar-gelin' : 'avatar-damat';
+    const colHeader = filtered.length > 0 ? `<div style="display:flex;align-items:center;padding:4px 12px 4px 54px;gap:6px;border-bottom:0.5px solid rgba(201,169,110,.15);background:rgba(201,169,110,.06)">
+      <div style="flex:1"></div>
+      <span style="font-size:10px;color:var(--text-muted);width:70px;text-align:center;text-transform:uppercase;letter-spacing:.5px">Katılım</span>
+      <span style="font-size:10px;color:var(--text-muted);width:86px;text-align:center;text-transform:uppercase;letter-spacing:.5px">Davetiye Durumu</span>
+      ${isEditor?'<span style="width:36px"></span>':''}
+    </div>` : '';
+    let html = colHeader;
+    // sort by order field
+    filtered.sort((a,b) => (a[1].order||0) - (b[1].order||0));
+    for (const [gid, g] of filtered) {
+      const open = collapsed[gid] === false; // default closed unless explicitly opened
+      const members = Object.entries(g.members||{}).sort((a,b)=>(a[1].order||0)-(b[1].order||0));
+      const totalCount = members.length + 1; // +1 for the head person
+      const visMems = (() => {
+        let m = members;
+        if (inviteFilter) m = m.filter(([,x])=>x.invited!==true);
+        if (statusFilters.length > 0) m = m.filter(([,x])=>statusFilters.includes(x.status));
+        return m;
+      })();
+      let mHtml = '';
+      for (let i = 0; i < visMems.length; i++) {
+        const [mid, m] = visMems[i];
+        const last = i === visMems.length-1;
+        const dragAttrs = isEditor ? `draggable="true"
+          ondragstart="window._memberDragStart(event,'${gid}','${mid}')"
+          ondragend="window._memberDragEnd(event)"
+          ondragover="window._memberDragOver(event,'${gid}','${mid}')"
+          ondragleave="window._memberDragLeave(event)"
+          ondrop="window._memberDrop(event,'${gid}','${mid}')"` : '';
+        mHtml += `<div class="member-row" data-gid="${gid}" data-mid="${mid}" ${dragAttrs}>
+          ${isEditor?`<span class="drag-handle" title="Taşı">⠿</span>`:'<div class="tree-line'+( last&&!isEditor?'':' branch')+'"></div>'}
+          <div class="member-avatar ${avCls}" style="width:24px;height:24px;font-size:10px;margin-right:6px">${initials(m.name)}</div>
+          <div class="member-info"><div class="member-name">${m.name}</div><div class="member-relation">${m.relation||''}</div></div>
+          ${statusBadge(m.status,gid,mid)}
+          ${inviteBadge(m.invited,gid,mid)}
+          ${isEditor?`<button class="edit-btn" onclick="window._editMember('${gid}','${mid}')" title="Düzenle">✎</button><button class="del-btn" onclick="window._deleteMember('${gid}','${mid}')">×</button>`:''}
+        </div>`;
+      }
+      // cross-group drop zone at bottom of members list
+      const dropZone = isEditor && open ? `<div class="members-drop-zone" data-target-gid="${gid}"
+        ondragover="window._groupDropZoneOver(event,'${gid}')"
+        ondragleave="window._groupDropZoneLeave(event)"
+        ondrop="window._groupDropZoneDrop(event,'${gid}')"></div>` : '';
+      if (isEditor && open) mHtml += `<div style="padding:6px 10px 8px 32px"><button class="add-member-btn" onclick="window._openMemberModal('${gid}')">+ Üye Ekle</button></div>`;
+
+      const groupDragAttrs = isEditor ? `draggable="true"
+        ondragstart="window._groupDragStart(event,'${gid}','${side}')"
+        ondragend="window._groupDragEnd(event)"
+        ondragover="window._groupDragOver(event,'${gid}')"
+        ondragleave="window._groupDragLeave(event)"
+        ondrop="window._groupDrop(event,'${gid}','${side}')"` : '';
+
+      html += `<div class="family-group" data-gid="${gid}" ${groupDragAttrs}>
+        <div class="family-head" onclick="window._toggleGroup('${gid}')">
+          ${isEditor?`<span class="drag-handle" onclick="event.stopPropagation()" title="Grubu Taşı">⠿</span>`:''}
+          <span class="chevron ${open?'open':''}">›</span>
+          <div class="member-avatar ${avCls}" style="margin-right:7px">${initials(g.headName)}</div>
+          <div class="family-head-info">
+            <div class="family-head-name">${g.headName}</div>
+            <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+              <span style="font-size:11px;color:var(--text-muted)">${g.relation||''} · ${totalCount} kişi</span>
+              ${catBadge(g.category)}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px" onclick="event.stopPropagation()">
+            ${statusBadge(g.status,gid,null)}
+            ${inviteBadge(g.invited,gid,null)}
+            ${isEditor?`<button class="edit-btn" onclick="window._editGroup('${gid}')" title="Düzenle">✎</button><button class="del-btn" onclick="window._deleteGroup('${gid}')">×</button>`:''}
+          </div>
+        </div>
+        ${open?`<div>${mHtml}${dropZone}</div>`:''}
+      </div>`;
+    }
+    if (!html || html === colHeader) html = colHeader + `<div style="padding:22px 14px;text-align:center;font-size:12px;color:var(--text-muted)">Davetli bulunamadı.</div>`;
+    el.innerHTML = html;
+  }
+
+  function render() { renderColumn('gelin'); renderColumn('damat'); updateHeaders(); updateBudgetCalc(); }
+
+  // TABLES
+  function getAllPeople() {
+    const people = [];
+    Object.entries(groups).forEach(([gid,g]) => {
+      people.push({ id: gid+'__head', name: g.headName, side: g.side, gid, mid: null, isHead: true });
+      Object.entries(g.members||{}).forEach(([mid,m]) => {
+        people.push({ id: gid+'__'+mid, name: m.name, side: g.side, gid, mid, isHead: false });
+      });
+    });
+    return people;
+  }
+  function getAssignedIds() {
+    const ids = new Set();
+    Object.values(tables).forEach(t => Object.keys(t.seats||{}).forEach(id => ids.add(id)));
+    return ids;
+  }
+  function getGroupLeaderName(personId) {
+    const [gid] = personId.split('__');
+    return groups[gid]?.headName || '';
+  }
+  function isPersonDetached(personId) {
+    const [gid] = personId.split('__');
+    const g = groups[gid];
+    if (!g) return false;
+    const allInGroup = [gid+'__head', ...Object.keys(g.members||{}).map(mid => gid+'__'+mid)];
+    const assignedIds = getAssignedIds();
+    const assignedInGroup = allInGroup.filter(id => assignedIds.has(id));
+    // find which table this person is on
+    let myTable = null;
+    Object.entries(tables).forEach(([tid,t]) => { if (t.seats?.[personId]) myTable = tid; });
+    if (!myTable) return false;
+    // detached if some group members are on different tables
+    const othersOnDifferentTable = assignedInGroup.some(id => {
+      if (id === personId) return false;
+      let theirTable = null;
+      Object.entries(tables).forEach(([tid,t]) => { if (t.seats?.[id]) theirTable = tid; });
+      return theirTable && theirTable !== myTable;
+    });
+    return othersOnDifferentTable;
+  }
+
+  function renderTables() {
+    const pool = document.getElementById('unassigned-list');
+    const grid = document.getElementById('tables-grid');
+    const info = document.getElementById('tables-assign-info');
+    if (!pool || !grid) return;
+
+    const allPeople = getAllPeople();
+    const assignedIds = getAssignedIds();
+    const unassigned = allPeople.filter(p => !assignedIds.has(p.id));
+
+    document.getElementById('unassigned-count').textContent = `(${unassigned.length} kişi)`;
+    info.textContent = `${assignedIds.size} / ${allPeople.length} kişi masaya atandı`;
+
+    // Group unassigned by gid
+    const unassignedByGroup = {};
+    unassigned.forEach(p => {
+      if (!unassignedByGroup[p.gid]) unassignedByGroup[p.gid] = [];
+      unassignedByGroup[p.gid].push(p);
+    });
+
+    if (unassigned.length === 0) {
+      pool.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Tüm davetliler masalara atandı ✓</span>';
+    } else {
+      pool.innerHTML = Object.entries(unassignedByGroup).map(([gid, people]) => {
+        const g = groups[gid];
+        if (!g) return '';
+        const avCls = g.side === 'gelin' ? 'avatar-gelin' : 'avatar-damat';
+        const allGroupIds = [gid+'__head', ...Object.keys(g.members||{}).map(mid=>gid+'__'+mid)];
+        const allUnassigned = allGroupIds.filter(id => !assignedIds.has(id));
+        // group drag handle — only if all group members are unassigned
+        const groupDraggable = isEditor && allUnassigned.length === allGroupIds.length;
+        return `<div class="pool-group">
+          <div class="pool-group-header"
+            ${groupDraggable ? `draggable="true"
+              ondragstart="window._poolGroupDragStart(event,'${gid}')"
+              ondragend="window._dragEnd(event)"` : ''}>
+            <div class="member-avatar ${avCls}" style="width:18px;height:18px;font-size:8px;border-width:1px;flex-shrink:0">${initials(g.headName)}</div>
+            <span style="font-size:12px;font-weight:500;color:var(--text-muted)">${g.headName}</span>
+            ${groupDraggable ? `<span style="font-size:10px;color:var(--gold-dark);margin-left:4px" title="Grubu bir masaya sürükle">⠿</span>` : ''}
+          </div>
+          <div class="pool-group-members">
+            ${people.map(p => `<div class="unassigned-chip" draggable="true"
+              ondragstart="window._dragStart(event,'${p.id}','${p.name}','${p.side}')"
+              ondragend="window._dragEnd(event)">
+              <div class="member-avatar ${avCls}" style="width:18px;height:18px;font-size:8px;border-width:1px">${initials(p.name)}</div>
+              <span>${p.name}</span>
+            </div>`).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // Tables — with return-to-pool drop zone around whole card
+    grid.innerHTML = Object.entries(tables).map(([tid,t]) => {
+      const seats = Object.entries(t.seats||{});
+      const cap = t.capacity || 10;
+      const full = seats.length >= cap;
+      return `<div class="table-card"
+        ondragover="window._tableCardDragOver(event,'${tid}')"
+        ondragleave="window._tableCardDragLeave(event)"
+        ondrop="window._drop(event,'${tid}')">
+        <div class="table-card-header">
+          <span class="table-card-name">${t.name}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="table-card-cap" style="color:${full?'#991B1B':'var(--text-muted)'}">${seats.length}/${cap}</span>
+            ${isEditor?`<button class="del-btn" style="font-size:14px" onclick="window._deleteTable('${tid}')">×</button>`:''}
+          </div>
+        </div>
+        <div class="table-seats">
+          <div class="table-drop-zone" id="dz-${tid}">
+            ${seats.map(([sid,seat]) => {
+              const avCls = seat.side === 'gelin' ? 'avatar-gelin' : 'avatar-damat';
+              const detached = isPersonDetached(sid);
+              const leaderName = detached ? getGroupLeaderName(sid) : '';
+              const isSelf = sid.endsWith('__head');
+              const showParent = detached && !isSelf;
+              return `<div class="seat-item" draggable="${isEditor}"
+                ondragstart="window._dragStart(event,'${sid}','${seat.name}','${seat.side}','${tid}')"
+                ondragend="window._dragEnd(event)">
+                <div class="member-avatar ${avCls}" style="width:22px;height:22px;font-size:9px;border-width:1px">${initials(seat.name)}</div>
+                <div style="flex:1;min-width:0">
+                  <div class="seat-name">${seat.name}</div>
+                  ${showParent ? `<div style="font-size:10px;color:var(--text-muted)">(${leaderName})</div>` : ''}
+                </div>
+                ${isEditor?`<button class="seat-remove" onclick="window._removeSeat('${tid}','${sid}')">×</button>`:''}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>`;
+    }).join('') || `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted);font-size:13px">Henüz masa eklenmedi. "Masa Ekle" ile başlayın.</div>`;
+
+    // Return-to-pool drop zone
+    document.getElementById('unassigned-pool').ondragover = (e) => {
+      if (dragData?.fromTable) { e.preventDefault(); document.getElementById('unassigned-pool').style.outline = '2px dashed var(--gold)'; }
+    };
+    document.getElementById('unassigned-pool').ondragleave = () => {
+      document.getElementById('unassigned-pool').style.outline = '';
+    };
+    document.getElementById('unassigned-pool').ondrop = (e) => {
+      e.preventDefault();
+      document.getElementById('unassigned-pool').style.outline = '';
+      if (!dragData?.fromTable || !isEditor) return;
+      setSyncing('syncing');
+      remove(ref(db, `tables/${dragData.fromTable}/seats/${dragData.id}`)).then(() => setSyncing('saved'));
+      dragData = null;
+    };
+  }
+
+  // DRAG & DROP — TABLES
+  window._dragStart = function(e, id, name, side, fromTable) {
+    dragData = { id, name, side, fromTable: fromTable || null };
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => e.target.classList.add('dragging'), 0);
+  };
+  window._dragEnd = function(e) {
+    e.target.classList.remove('dragging');
+    document.querySelectorAll('.table-drop-zone,.table-card').forEach(z => z.classList.remove('drag-over'));
+  };
+  window._tableCardDragOver = function(e, tid) {
+    if (!dragData) return;
+    e.preventDefault(); e.stopPropagation();
+    document.querySelectorAll('.table-card').forEach(c => c.classList.remove('drag-over'));
+    e.currentTarget.classList.add('drag-over');
+  };
+  window._tableCardDragLeave = function(e) {
+    if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over');
+  };
+  window._drop = function(e, tid) {
+    e.preventDefault(); e.stopPropagation();
+    document.querySelectorAll('.table-card').forEach(c => c.classList.remove('drag-over'));
+    if (!isEditor || !dragData) return;
+    const t = tables[tid];
+    if (!t) return;
+
+    if (dragData.isGroup) {
+      const currentSeats = Object.keys(t.seats||{});
+      const newPeople = dragData.people.filter(p => !currentSeats.includes(p.id));
+      if (currentSeats.length + newPeople.length > (t.capacity||10)) {
+        alert(`Masa kapasitesi yetersiz. (${currentSeats.length}/${t.capacity||10})`);
+        dragData = null; return;
+      }
+      const updates = {};
+      dragData.people.forEach(p => { updates[`tables/${tid}/seats/${p.id}`] = { name: p.name, side: p.side }; });
+      setSyncing('syncing');
+      update(ref(db), updates).then(() => setSyncing('saved'));
+    } else {
+      const seats = Object.keys(t.seats||{});
+      if (seats.length >= (t.capacity||10) && !seats.includes(dragData.id)) { dragData = null; return; }
+      const updates = {};
+      if (dragData.fromTable && dragData.fromTable !== tid) updates[`tables/${dragData.fromTable}/seats/${dragData.id}`] = null;
+      updates[`tables/${tid}/seats/${dragData.id}`] = { name: dragData.name, side: dragData.side };
+      setSyncing('syncing');
+      update(ref(db), updates).then(() => setSyncing('saved'));
+    }
+    dragData = null;
+  };
+  window._poolGroupDragStart = function(e, gid) {
+    const g = groups[gid];
+    if (!g) return;
+    const allIds = [gid+'__head', ...Object.keys(g.members||{}).map(mid=>gid+'__'+mid)];
+    const allPeople = getAllPeople().filter(p => allIds.includes(p.id));
+    dragData = { isGroup: true, gid, people: allPeople };
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  window._removeSeat = function(tid, sid) {
+    if (!isEditor) return;
+    setSyncing('syncing');
+    remove(ref(db, `tables/${tid}/seats/${sid}`)).then(() => setSyncing('saved'));
+  };
+  window._deleteTable = function(tid) {
+    if (!isEditor) return;
+    if (confirm('Bu masayı silmek istediğinizden emin misiniz?')) {
+      setSyncing('syncing');
+      remove(ref(db, `tables/${tid}`)).then(() => setSyncing('saved'));
+    }
+  };
+
+  // FIREBASE WRITES — GUESTS
+  window._cycleStatus = function(gid, mid) {
+    if (!isEditor) return;
+    setSyncing('syncing');
+    if (!mid) {
+      update(ref(db, `groups/${gid}`), { status: nextStatus(groups[gid].status) }).then(() => setSyncing('saved'));
+    } else {
+      update(ref(db, `groups/${gid}/members/${mid}`), { status: nextStatus(groups[gid].members[mid].status) }).then(() => setSyncing('saved'));
+    }
+  };
+  window._toggleInvite = function(gid, mid) {
+    if (!isEditor) return;
+    setSyncing('syncing');
+    if (!mid) {
+      const cur = groups[gid].invited === true;
+      update(ref(db, `groups/${gid}`), { invited: !cur }).then(() => setSyncing('saved'));
+    } else {
+      const cur = groups[gid].members[mid].invited === true;
+      update(ref(db, `groups/${gid}/members/${mid}`), { invited: !cur }).then(() => setSyncing('saved'));
+    }
+  };
+  window._editGroup = function(gid) {
+    if (!isEditor) return;
+    const g = groups[gid];
+    document.getElementById('edit-group-id').value = gid;
+    document.getElementById('edit-head-name').value = g.headName || '';
+    document.getElementById('edit-head-relation').value = g.relation || '';
+    document.getElementById('edit-head-category').value = g.category || 'akraba';
+    document.getElementById('edit-head-status').value = g.status || 'coming';
+    document.getElementById('edit-group-modal').classList.add('open');
+  };
+  window.updateGroup = function() {
+    const gid = document.getElementById('edit-group-id').value;
+    const headName = document.getElementById('edit-head-name').value.trim();
+    const relation = document.getElementById('edit-head-relation').value.trim();
+    const category = document.getElementById('edit-head-category').value;
+    const status = document.getElementById('edit-head-status').value;
+    if (!headName) return;
+    setSyncing('syncing');
+    update(ref(db, `groups/${gid}`), { headName, relation, category, status }).then(() => { setSyncing('saved'); closeModal('edit-group-modal'); });
+  };
+  window._editMember = function(gid, mid) {
+    if (!isEditor) return;
+    const m = groups[gid].members[mid];
+    document.getElementById('edit-member-gid').value = gid;
+    document.getElementById('edit-member-mid').value = mid;
+    document.getElementById('edit-member-name').value = m.name || '';
+    document.getElementById('edit-member-relation').value = m.relation || '';
+    document.getElementById('edit-member-status').value = m.status || 'coming';
+    document.getElementById('edit-member-modal').classList.add('open');
+  };
+  window.updateMember = function() {
+    const gid = document.getElementById('edit-member-gid').value;
+    const mid = document.getElementById('edit-member-mid').value;
+    const name = document.getElementById('edit-member-name').value.trim();
+    const relation = document.getElementById('edit-member-relation').value.trim();
+    const status = document.getElementById('edit-member-status').value;
+    if (!name) return;
+    setSyncing('syncing');
+    update(ref(db, `groups/${gid}/members/${mid}`), { name, relation, status }).then(() => { setSyncing('saved'); closeModal('edit-member-modal'); });
+  };
+  // ---- DRAG & DROP — GROUPS ----
+  let dragGid = null, dragSide = null;
+  let dragMid = null, dragMGid = null;
+
+  function getGroupOrder(side) {
+    return Object.entries(groups)
+      .filter(([,g])=>g.side===side)
+      .sort((a,b)=>(a[1].order||0)-(b[1].order||0))
+      .map(([id])=>id);
+  }
+  function getMemberOrder(gid) {
+    return Object.entries(groups[gid].members||{})
+      .sort((a,b)=>(a[1].order||0)-(b[1].order||0))
+      .map(([id])=>id);
+  }
+
+  window._groupDragStart = function(e, gid, side) {
+    dragGid = gid; dragSide = side;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(()=>{ const el=document.querySelector(`.family-group[data-gid="${gid}"]`); if(el) el.classList.add('dragging-group'); },0);
+  };
+  window._groupDragEnd = function(e) {
+    dragGid = null; dragSide = null;
+    document.querySelectorAll('.family-group').forEach(el => { el.classList.remove('dragging-group','drag-over-top','drag-over-bottom'); });
+  };
+  window._groupDragOver = function(e, targetGid) {
+    if (!dragGid || dragGid === targetGid) return;
+    e.preventDefault(); e.stopPropagation();
+    document.querySelectorAll('.family-group').forEach(el => el.classList.remove('drag-over-top','drag-over-bottom'));
+    const el = document.querySelector(`.family-group[data-gid="${targetGid}"]`);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    el.classList.add(e.clientY < mid ? 'drag-over-top' : 'drag-over-bottom');
+  };
+  window._groupDragLeave = function(e) {
+    if (e.currentTarget) { e.currentTarget.classList.remove('drag-over-top','drag-over-bottom'); }
+  };
+  window._groupDrop = function(e, targetGid, targetSide) {
+    e.preventDefault(); e.stopPropagation();
+    if (!dragGid || dragGid === targetGid || !isEditor) return;
+    const el = document.querySelector(`.family-group[data-gid="${targetGid}"]`);
+    const rect = el ? el.getBoundingClientRect() : null;
+    const insertBefore = rect ? e.clientY < rect.top + rect.height / 2 : false;
+    const order = getGroupOrder(dragSide);
+    const fromIdx = order.indexOf(dragGid);
+    let toIdx = order.indexOf(targetGid);
+    if (fromIdx === -1 || toIdx === -1) return;
+    order.splice(fromIdx, 1);
+    toIdx = order.indexOf(targetGid);
+    order.splice(insertBefore ? toIdx : toIdx + 1, 0, dragGid);
+    const updates = {};
+    order.forEach((id, i) => { updates[`groups/${id}/order`] = i; });
+    setSyncing('syncing');
+    update(ref(db), updates).then(() => setSyncing('saved'));
+    document.querySelectorAll('.family-group').forEach(el => el.classList.remove('drag-over-top','drag-over-bottom'));
+  };
+
+  // ---- DRAG & DROP — MEMBERS ----
+  window._memberDragStart = function(e, gid, mid) {
+    dragMGid = gid; dragMid = mid;
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+    setTimeout(()=>{ const el=document.querySelector(`.member-row[data-gid="${gid}"][data-mid="${mid}"]`); if(el) el.classList.add('dragging-member'); },0);
+  };
+  window._memberDragEnd = function(e) {
+    dragMid = null; dragMGid = null;
+    document.querySelectorAll('.member-row').forEach(el => el.classList.remove('dragging-member','drag-over-top','drag-over-bottom'));
+    document.querySelectorAll('.members-drop-zone').forEach(el => el.classList.remove('drag-over'));
+  };
+  window._memberDragOver = function(e, gid, mid) {
+    if (!dragMid) return;
+    e.preventDefault(); e.stopPropagation();
+    document.querySelectorAll('.member-row').forEach(el => el.classList.remove('drag-over-top','drag-over-bottom'));
+    if (dragMGid === gid && dragMid === mid) return;
+    const el = document.querySelector(`.member-row[data-gid="${gid}"][data-mid="${mid}"]`);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    el.classList.add(e.clientY < rect.top + rect.height / 2 ? 'drag-over-top' : 'drag-over-bottom');
+  };
+  window._memberDragLeave = function(e) {
+    if (e.currentTarget) e.currentTarget.classList.remove('drag-over-top','drag-over-bottom');
+  };
+  window._memberDrop = function(e, targetGid, targetMid) {
+    e.preventDefault(); e.stopPropagation();
+    if (!dragMid || !isEditor) return;
+    const el = document.querySelector(`.member-row[data-gid="${targetGid}"][data-mid="${targetMid}"]`);
+    const rect = el ? el.getBoundingClientRect() : null;
+    const insertBefore = rect ? e.clientY < rect.top + rect.height / 2 : false;
+
+    if (dragMGid === targetGid) {
+      // same group — reorder
+      const order = getMemberOrder(dragMGid);
+      const fromIdx = order.indexOf(dragMid);
+      let toIdx = order.indexOf(targetMid);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+      order.splice(fromIdx, 1);
+      toIdx = order.indexOf(targetMid);
+      order.splice(insertBefore ? toIdx : toIdx + 1, 0, dragMid);
+      const updates = {};
+      order.forEach((id, i) => { updates[`groups/${dragMGid}/members/${id}/order`] = i; });
+      setSyncing('syncing');
+      update(ref(db), updates).then(() => setSyncing('saved'));
+    } else {
+      // different group — move member
+      const memberData = { ...groups[dragMGid].members[dragMid] };
+      const order = getMemberOrder(targetGid);
+      let toIdx = order.indexOf(targetMid);
+      order.splice(insertBefore ? toIdx : toIdx + 1, 0, dragMid);
+      const updates = {};
+      updates[`groups/${dragMGid}/members/${dragMid}`] = null;
+      updates[`groups/${targetGid}/members/${dragMid}`] = { ...memberData, order: 0 };
+      order.forEach((id, i) => { updates[`groups/${targetGid}/members/${id}/order`] = i; });
+      setSyncing('syncing');
+      update(ref(db), updates).then(() => setSyncing('saved'));
+    }
+    document.querySelectorAll('.member-row').forEach(el => el.classList.remove('drag-over-top','drag-over-bottom'));
+  };
+
+  // drop zone at bottom of group (empty group or after last member)
+  window._groupDropZoneOver = function(e, gid) {
+    if (!dragMid) return;
+    e.preventDefault(); e.stopPropagation();
+    document.querySelector(`.members-drop-zone[data-target-gid="${gid}"]`)?.classList.add('drag-over');
+  };
+  window._groupDropZoneLeave = function(e) {
+    e.currentTarget?.classList.remove('drag-over');
+  };
+  window._groupDropZoneDrop = function(e, targetGid) {
+    e.preventDefault(); e.stopPropagation();
+    if (!dragMid || !isEditor) return;
+    e.currentTarget?.classList.remove('drag-over');
+    if (dragMGid === targetGid) return;
+    const memberData = { ...groups[dragMGid].members[dragMid] };
+    const existingCount = Object.keys(groups[targetGid].members||{}).length;
+    const updates = {};
+    updates[`groups/${dragMGid}/members/${dragMid}`] = null;
+    updates[`groups/${targetGid}/members/${dragMid}`] = { ...memberData, order: existingCount };
+    setSyncing('syncing');
+    update(ref(db), updates).then(() => setSyncing('saved'));
+  };
+
+  window._deleteGroup = function(gid) {
+    if (!isEditor) return;
+    if (confirm('Bu grubu silmek istediğinizden emin misiniz?')) { setSyncing('syncing'); remove(ref(db, `groups/${gid}`)).then(() => setSyncing('saved')); }
+  };
+  window._deleteMember = function(gid, mid) {
+    if (!isEditor) return;
+    setSyncing('syncing'); remove(ref(db, `groups/${gid}/members/${mid}`)).then(() => setSyncing('saved'));
+  };
+  window._deleteExtra = function(eid) {
+    if (!isEditor) return;
+    setSyncing('syncing'); remove(ref(db, `budget/extras/${eid}`)).then(() => setSyncing('saved'));
+  };
+  window._updateExtraAmount = function(eid, val) {
+    if (!isEditor) return;
+    setSyncing('syncing'); update(ref(db, `budget/extras/${eid}`), { amount: parseFloat(val)||0 }).then(() => setSyncing('saved'));
+  };
+  window._toggleGroup = function(gid) {
+    collapsed[gid] = collapsed[gid] === false ? true : false;
+    render();
+  };
+  window._openMemberModal = function(gid) {
+    document.getElementById('member-group-id').value = gid;
+    document.getElementById('inp-member-name').value = '';
+    document.getElementById('inp-member-relation').value = '';
+    document.getElementById('member-modal').classList.add('open');
+  };
+
+  window.saveGroup = function() {
+    const name = document.getElementById('inp-head-name').value.trim();
+    const rel = document.getElementById('inp-head-relation').value.trim();
+    const status = document.getElementById('inp-head-status').value;
+    const category = document.getElementById('inp-head-category').value;
+    const side = document.getElementById('modal-side').value;
+    if (!name) return;
+    setSyncing('syncing');
+    push(ref(db,'groups'), { side, headName: name, relation: rel||'Aile', status, category, invited: false, members: {} }).then(() => { setSyncing('saved'); closeModal('add-modal'); });
+  };
+  window.saveMember = function() {
+    const gid = document.getElementById('member-group-id').value;
+    const name = document.getElementById('inp-member-name').value.trim();
+    const rel = document.getElementById('inp-member-relation').value.trim();
+    const status = document.getElementById('inp-member-status').value;
+    if (!name) return;
+    setSyncing('syncing');
+    push(ref(db,`groups/${gid}/members`), { name, relation: rel, status, invited: false }).then(() => { setSyncing('saved'); closeModal('member-modal'); });
+  };
+  window.saveExtra = function() {
+    const name = document.getElementById('inp-extra-name').value.trim();
+    const amount = parseFloat(document.getElementById('inp-extra-amount').value)||0;
+    if (!name) return;
+    const icons = {'pasta':'🎂','davetiye':'💌','gelinlik':'👗','takı':'💍','fotoğraf':'📷','müzik':'🎵','otopark':'🚗','çiçek':'💐'};
+    const icon = Object.entries(icons).find(([k])=>name.toLowerCase().includes(k))?.[1]||'💍';
+    setSyncing('syncing');
+    push(ref(db,'budget/extras'), { name, amount, icon }).then(() => { setSyncing('saved'); closeModal('extra-modal'); });
+  };
+  window.saveTable = function() {
+    const name = document.getElementById('inp-table-name').value.trim();
+    const cap = parseInt(document.getElementById('inp-table-cap').value)||10;
+    if (!name) return;
+    setSyncing('syncing');
+    push(ref(db,'tables'), { name, capacity: cap, seats: {} }).then(() => { setSyncing('saved'); closeModal('table-modal'); });
+  };
+  window.saveBudgetField = function(field, val) {
+    if (!isEditor) return;
+    setSyncing('syncing'); update(ref(db,'budget'), { [field]: parseFloat(val)||0 }).then(() => setSyncing('saved'));
+    updateBudgetCalc();
+  };
+
+  // BUDGET
+  function renderExtras() {
+    const list = document.getElementById('extras-list');
+    let html = '';
+    for (const [eid,ex] of Object.entries(budget.extras||{})) {
+      html += `<div class="extra-item" data-id="${eid}">
+        <span class="extra-name">${ex.icon||'💍'} ${ex.name}</span>
+        <input class="budget-input-field" type="number" value="${ex.amount}" oninput="window._updateExtraAmount('${eid}',this.value)" style="width:100px;margin-top:0" ${isEditor?'':'disabled'}>
+        <span class="extra-amount">${formatTL(ex.amount)}</span>
+        ${isEditor?`<button onclick="window._deleteExtra('${eid}')" class="del-btn">×</button>`:''}
+      </div>`;
+    }
+    list.innerHTML = html;
+  }
+  function updateBudgetCalc() {
+    const ppEl = document.getElementById('per-person-cost');
+    if (!ppEl) return;
+    const pp = parseFloat(ppEl.value)||0;
+    const all = getAllMembers();
+    const total = all.length;
+    const coming = all.filter(m=>m.status==='coming').length;
+    const maybe = all.filter(m=>m.status==='maybe').length;
+    const ext = Object.values(budget.extras||{}).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('b-total', total + ' kişi');
+    set('b-coming', coming + ' kişi');
+    set('b-maybe', maybe + ' kişi');
+    set('b-menu-total', formatTL(coming * pp));
+    set('b-menu-maybe', formatTL((coming + maybe) * pp));
+    set('budget-grand-total', formatTL(coming * pp + ext));
+  }
+  function formatTL(n) { return '₺'+Math.round(n).toLocaleString('tr-TR'); }
+
+  // UI CONTROLS
+  window.openAddModal = function(side) {
+    document.getElementById('modal-side').value = side;
+    document.getElementById('inp-head-name').value = '';
+    document.getElementById('inp-head-relation').value = '';
+    document.getElementById('add-modal').classList.add('open');
+  };
+  window.openTableModal = function() {
+    document.getElementById('inp-table-name').value = '';
+    document.getElementById('inp-table-cap').value = '10';
+    document.getElementById('table-modal').classList.add('open');
+  };
+  window.addExtra = function() {
+    if (!isEditor) return;
+    document.getElementById('inp-extra-name').value = '';
+    document.getElementById('inp-extra-amount').value = '';
+    document.getElementById('extra-modal').classList.add('open');
+  };
+  window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
+  const EDITOR_PASSWORD = 'karakurt';
+
+  function setEditorMode(on) {
+    isEditor = on;
+    const badge = document.getElementById('role-badge');
+    ['add-gelin-row','add-damat-row','add-extra-btn','add-table-btn'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = isEditor?'':'none'; });
+    badge.textContent = isEditor ? '✎ Editör Modu' : '👁 İzleyici';
+    badge.className = 'role-badge '+(isEditor?'editor':'viewer');
+    document.getElementById('viewer-notice').style.display = isEditor?'none':'flex';
+    render(); renderTables();
+  }
+
+  window.toggleRole = function() {
+    if (isEditor) {
+      setEditorMode(false);
+    } else {
+      document.getElementById('pw-input').value = '';
+      document.getElementById('pw-error').style.display = 'none';
+      document.getElementById('pw-modal').classList.add('open');
+      setTimeout(() => document.getElementById('pw-input').focus(), 100);
+    }
+  };
+
+  window.submitPassword = function() {
+    const val = document.getElementById('pw-input').value;
+    if (val === EDITOR_PASSWORD) {
+      closeModal('pw-modal');
+      setEditorMode(true);
+    } else {
+      document.getElementById('pw-error').style.display = 'block';
+      document.getElementById('pw-input').value = '';
+      document.getElementById('pw-input').focus();
+    }
+  };
+
+  window.pwKeydown = function(e) {
+    if (e.key === 'Enter') window.submitPassword();
+  };
+  window.toggleColumn = function(side) {
+    const body = document.getElementById('col-body-'+side);
+    const chev = document.getElementById('col-chev-'+side);
+    if (!body || !chev) return;
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : '';
+    chev.classList.toggle('open', !isOpen);
+  };
+
+  window.setFilter = function(f, btn) {
+    if (f === 'all') {
+      activeFilters.clear();
+    } else {
+      if (activeFilters.has(f)) {
+        activeFilters.delete(f);
+      } else {
+        activeFilters.add(f);
+      }
+    }
+    // update button styles
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active-filter'));
+    if (activeFilters.size === 0) {
+      document.querySelector('.filter-btn')?.classList.add('active-filter');
+    } else {
+      activeFilters.forEach(f => {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+          if (b.getAttribute('onclick')?.includes(`'${f}'`)) b.classList.add('active-filter');
+        });
+      });
+    }
+    render();
+  };
+  window.searchFilter = function(v) { currentSearch = v; render(); };
+  window.switchTab = function(tab, btn) {
+    ['guests','tables','budget'].forEach(t => { document.getElementById('tab-'+t).style.display = t===tab?'':'none'; });
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    if (tab === 'tables') renderTables();
+    if (tab === 'budget') updateBudgetCalc();
+  };
+
+  // ── TOUCH DRAG-DROP ─────────────────────────────
+  let touchDrag = null;
+  let ghostEl = null;
+
+  function createGhost(el, x, y) {
+    const rect = el.getBoundingClientRect();
+    ghostEl = el.cloneNode(true);
+    ghostEl.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:.75;pointer-events:none;z-index:9999;background:white;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.2);`;
+    document.body.appendChild(ghostEl);
+  }
+
+  function moveGhost(x, y) {
+    if (!ghostEl) return;
+    ghostEl.style.left = (x - touchDrag.offsetX) + 'px';
+    ghostEl.style.top  = (y - touchDrag.offsetY) + 'px';
+  }
+
+  function removeGhost() {
+    if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+  }
+
+  function getElementAtPoint(x, y, selector) {
+    const els = document.querySelectorAll(selector);
+    for (const el of els) {
+      const r = el.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return el;
+    }
+    return null;
+  }
+
+  document.addEventListener('touchstart', function(e) {
+    if (!isEditor) return;
+    const handle = e.target.closest('.drag-handle');
+    if (!handle) return;
+    const row = handle.closest('.member-row');
+    const grp = handle.closest('.family-group');
+    if (!row && !grp) return;
+
+    e.preventDefault();
+    const touch = e.touches[0];
+    const target = row || grp;
+    const rect = target.getBoundingClientRect();
+
+    if (row) {
+      touchDrag = { type: 'member', gid: row.dataset.gid, mid: row.dataset.mid, el: row, offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top };
+    } else {
+      touchDrag = { type: 'group', gid: grp.dataset.gid, side: grp.closest('.col-gelin') ? 'gelin' : 'damat', el: grp, offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top };
+    }
+    createGhost(target, touch.clientX, touch.clientY);
+    target.style.opacity = '0.3';
+  }, { passive: false });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!touchDrag) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    moveGhost(touch.clientX, touch.clientY);
+
+    // highlight drop target
+    document.querySelectorAll('.family-group.drag-over-top,.family-group.drag-over-bottom,.member-row.drag-over-top,.member-row.drag-over-bottom').forEach(el => el.classList.remove('drag-over-top','drag-over-bottom'));
+    if (touchDrag.type === 'member') {
+      const target = getElementAtPoint(touch.clientX, touch.clientY, '.member-row');
+      if (target && target !== touchDrag.el) {
+        const r = target.getBoundingClientRect();
+        target.classList.add(touch.clientY < r.top + r.height/2 ? 'drag-over-top' : 'drag-over-bottom');
+      } else {
+        const zone = getElementAtPoint(touch.clientX, touch.clientY, '.members-drop-zone');
+        if (zone) zone.classList.add('drag-over');
+      }
+    } else {
+      const target = getElementAtPoint(touch.clientX, touch.clientY, '.family-group');
+      if (target && target !== touchDrag.el) {
+        const r = target.getBoundingClientRect();
+        target.classList.add(touch.clientY < r.top + r.height/2 ? 'drag-over-top' : 'drag-over-bottom');
+      }
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchend', function(e) {
+    if (!touchDrag) return;
+    const touch = e.changedTouches[0];
+    touchDrag.el.style.opacity = '';
+    removeGhost();
+    document.querySelectorAll('.drag-over-top,.drag-over-bottom,.drag-over').forEach(el => el.classList.remove('drag-over-top','drag-over-bottom','drag-over'));
+
+    if (touchDrag.type === 'member') {
+      const targetRow = getElementAtPoint(touch.clientX, touch.clientY, '.member-row');
+      if (targetRow && targetRow !== touchDrag.el) {
+        const tGid = targetRow.dataset.gid;
+        const tMid = targetRow.dataset.mid;
+        const rect = targetRow.getBoundingClientRect();
+        const insertBefore = touch.clientY < rect.top + rect.height/2;
+        if (touchDrag.gid === tGid) {
+          const order = getMemberOrder(touchDrag.gid);
+          const fi = order.indexOf(touchDrag.mid); let ti = order.indexOf(tMid);
+          if (fi !== -1 && ti !== -1 && fi !== ti) {
+            order.splice(fi,1); ti = order.indexOf(tMid);
+            order.splice(insertBefore ? ti : ti+1, 0, touchDrag.mid);
+            const updates = {}; order.forEach((id,i) => { updates[`groups/${touchDrag.gid}/members/${id}/order`] = i; });
+            setSyncing('syncing'); update(ref(db), updates).then(() => setSyncing('saved'));
+          }
+        } else {
+          const memberData = { ...groups[touchDrag.gid].members[touchDrag.mid] };
+          const order = getMemberOrder(tGid); let ti = order.indexOf(tMid);
+          order.splice(insertBefore ? ti : ti+1, 0, touchDrag.mid);
+          const updates = {};
+          updates[`groups/${touchDrag.gid}/members/${touchDrag.mid}`] = null;
+          updates[`groups/${tGid}/members/${touchDrag.mid}`] = { ...memberData, order:0 };
+          order.forEach((id,i) => { updates[`groups/${tGid}/members/${id}/order`] = i; });
+          setSyncing('syncing'); update(ref(db), updates).then(() => setSyncing('saved'));
+        }
+      } else {
+        const zone = getElementAtPoint(touch.clientX, touch.clientY, '.members-drop-zone');
+        if (zone) {
+          const tGid = zone.dataset.targetGid;
+          if (tGid && tGid !== touchDrag.gid) {
+            const memberData = { ...groups[touchDrag.gid].members[touchDrag.mid] };
+            const count = Object.keys(groups[tGid].members||{}).length;
+            const updates = {};
+            updates[`groups/${touchDrag.gid}/members/${touchDrag.mid}`] = null;
+            updates[`groups/${tGid}/members/${touchDrag.mid}`] = { ...memberData, order: count };
+            setSyncing('syncing'); update(ref(db), updates).then(() => setSyncing('saved'));
+          }
+        }
+      }
+    } else {
+      const targetGrp = getElementAtPoint(touch.clientX, touch.clientY, '.family-group');
+      if (targetGrp && targetGrp !== touchDrag.el) {
+        const tGid = targetGrp.dataset.gid;
+        const rect = targetGrp.getBoundingClientRect();
+        const insertBefore = touch.clientY < rect.top + rect.height/2;
+        const order = getGroupOrder(touchDrag.side);
+        const fi = order.indexOf(touchDrag.gid); let ti = order.indexOf(tGid);
+        if (fi !== -1 && ti !== -1) {
+          order.splice(fi,1); ti = order.indexOf(tGid);
+          order.splice(insertBefore ? ti : ti+1, 0, touchDrag.gid);
+          const updates = {}; order.forEach((id,i) => { updates[`groups/${id}/order`] = i; });
+          setSyncing('syncing'); update(ref(db), updates).then(() => setSyncing('saved'));
+        }
+      }
+    }
+    touchDrag = null;
+  });
+
+</script>
+</body>
+</html>
