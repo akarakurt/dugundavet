@@ -850,6 +850,10 @@
     return othersOnDifferentTable;
   }
 
+  let poolCollapsed = {};   // gid → bool
+  let poolSideCollapsed = {}; // 'gelin'|'damat' → bool
+  let tableBodyCollapsed = {}; // tid → bool
+
   function renderTables() {
     const pool = document.getElementById('unassigned-list');
     const grid = document.getElementById('tables-grid');
@@ -863,62 +867,101 @@
     document.getElementById('unassigned-count').textContent = `(${unassigned.length} kişi)`;
     info.textContent = `${assignedIds.size} / ${allPeople.length} kişi masaya atandı`;
 
-    // Group unassigned by gid
-    const unassignedByGroup = {};
+    // Group unassigned by side then gid
+    const bySide = { gelin: {}, damat: {} };
     unassigned.forEach(p => {
-      if (!unassignedByGroup[p.gid]) unassignedByGroup[p.gid] = [];
-      unassignedByGroup[p.gid].push(p);
+      const side = groups[p.gid]?.side || 'gelin';
+      if (!bySide[side][p.gid]) bySide[side][p.gid] = [];
+      bySide[side][p.gid].push(p);
     });
 
-    if (unassigned.length === 0) {
-      pool.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Tüm davetliler masalara atandı ✓</span>';
-    } else {
-      pool.innerHTML = Object.entries(unassignedByGroup).map(([gid, people]) => {
+    const renderSide = (side) => {
+      const label = side === 'gelin' ? '🌸 Gelin Tarafı' : '💙 Damat Tarafı';
+      const sideGroups = bySide[side];
+      if (Object.keys(sideGroups).length === 0) return '';
+      const sideOpen = poolSideCollapsed[side] !== true;
+      const borderColor = side === 'gelin' ? 'rgba(212,132,122,.3)' : 'rgba(123,164,212,.3)';
+      const bgColor = side === 'gelin' ? '#FDF3F2' : '#F2F7FD';
+      const titleColor = side === 'gelin' ? 'var(--rose-dark)' : 'var(--blue-dark)';
+      const totalCount = Object.values(sideGroups).reduce((s,arr)=>s+arr.length,0);
+
+      const groupsHtml = Object.entries(sideGroups).map(([gid, people]) => {
         const g = groups[gid];
         if (!g) return '';
         const avCls = g.side === 'gelin' ? 'avatar-gelin' : 'avatar-damat';
         const allGroupIds = [gid+'__head', ...Object.keys(g.members||{}).map(mid=>gid+'__'+mid)];
         const allUnassigned = allGroupIds.filter(id => !assignedIds.has(id));
-        // group drag handle — only if all group members are unassigned
         const groupDraggable = isEditor && allUnassigned.length === allGroupIds.length;
+        const groupOpen = poolCollapsed[gid] !== true;
         return `<div class="pool-group">
-          <div class="pool-group-header"
-            ${groupDraggable ? `draggable="true"
+          <div class="pool-group-header" onclick="window._togglePoolGroup('${gid}')"
+            style="cursor:pointer;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
+              <span class="col-chevron ${groupOpen?'open':''}" style="font-size:14px">›</span>
+              <div class="member-avatar ${avCls}" style="width:18px;height:18px;font-size:8px;border-width:1px;flex-shrink:0">${initials(g.headName)}</div>
+              <span style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.headName}</span>
+              <span style="font-size:11px;color:var(--text-muted);flex-shrink:0">(${people.length} kişi)</span>
+            </div>
+            ${groupDraggable&&isEditor ? `<span class="drag-handle" onclick="event.stopPropagation()" draggable="true"
               ondragstart="window._poolGroupDragStart(event,'${gid}')"
-              ondragend="window._dragEnd(event)"` : ''}>
-            <div class="member-avatar ${avCls}" style="width:18px;height:18px;font-size:8px;border-width:1px;flex-shrink:0">${initials(g.headName)}</div>
-            <span style="font-size:12px;font-weight:500;color:var(--text-muted)">${g.headName}</span>
-            ${groupDraggable ? `<span style="font-size:10px;color:var(--gold-dark);margin-left:4px" title="Grubu bir masaya sürükle">⠿</span>` : ''}
+              ondragend="window._dragEnd(event)"
+              style="font-size:16px;opacity:.6" title="Grubu masaya sürükle">⠿</span>` : ''}
           </div>
-          <div class="pool-group-members">
+          ${groupOpen ? `<div class="pool-group-members">
             ${people.map(p => `<div class="unassigned-chip" draggable="true"
               ondragstart="window._dragStart(event,'${p.id}','${p.name}','${p.side}')"
               ondragend="window._dragEnd(event)">
               <div class="member-avatar ${avCls}" style="width:18px;height:18px;font-size:8px;border-width:1px">${initials(p.name)}</div>
               <span>${p.name}</span>
             </div>`).join('')}
-          </div>
+          </div>` : ''}
         </div>`;
       }).join('');
+
+      return `<div style="border:1px solid ${borderColor};border-radius:10px;overflow:hidden;margin-bottom:10px">
+        <div onclick="window._togglePoolSide('${side}')"
+          style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:${bgColor};cursor:pointer;user-select:none">
+          <span class="col-chevron ${sideOpen?'open':''}" style="font-size:15px">›</span>
+          <span style="font-family:'Playfair Display',serif;font-size:14px;font-weight:500;color:${titleColor}">${label}</span>
+          <span style="font-size:12px;color:var(--text-muted);margin-left:auto">${totalCount} kişi</span>
+        </div>
+        ${sideOpen ? `<div style="padding:8px 10px;display:flex;flex-direction:column;gap:8px">${groupsHtml}</div>` : ''}
+      </div>`;
+    };
+
+    if (unassigned.length === 0) {
+      pool.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Tüm davetliler masalara atandı ✓</span>';
+    } else {
+      pool.innerHTML = renderSide('gelin') + renderSide('damat');
     }
 
-    // Tables — with return-to-pool drop zone around whole card
+    // Tables
     grid.innerHTML = Object.entries(tables).map(([tid,t]) => {
       const seats = Object.entries(t.seats||{});
       const cap = t.capacity || 10;
       const full = seats.length >= cap;
+      const bodyOpen = tableBodyCollapsed[tid] !== true;
       return `<div class="table-card"
         ondragover="window._tableCardDragOver(event,'${tid}')"
         ondragleave="window._tableCardDragLeave(event)"
         ondrop="window._drop(event,'${tid}')">
         <div class="table-card-header">
-          <span class="table-card-name">${t.name}</span>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="table-card-cap" style="color:${full?'#991B1B':'var(--text-muted)'}">${seats.length}/${cap}</span>
+          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0" onclick="window._toggleTableBody('${tid}')">
+            <span class="col-chevron ${bodyOpen?'open':''}" style="font-size:14px;cursor:pointer">›</span>
+            ${isEditor
+              ? `<input class="table-name-input" value="${t.name}" onchange="window._updateTableName('${tid}',this.value)" onclick="event.stopPropagation()" style="font-family:'Playfair Display',serif;font-size:14px;font-weight:500;border:none;background:transparent;outline:none;color:var(--text);flex:1;min-width:0;cursor:text">`
+              : `<span class="table-card-name" style="flex:1">${t.name}</span>`}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;color:var(--text-muted)">Kap:</span>
+            ${isEditor
+              ? `<input type="number" value="${cap}" min="1" max="50" onchange="window._updateTableCap('${tid}',this.value)" onclick="event.stopPropagation()" style="width:40px;font-size:12px;border:1px solid var(--border);border-radius:5px;padding:2px 4px;background:var(--ivory);color:var(--text);outline:none;text-align:center">`
+              : `<span style="font-size:12px;color:${full?'#991B1B':'var(--text-muted)'}">${seats.length}/${cap}</span>`}
+            ${isEditor ? `<span style="font-size:12px;color:${full?'#991B1B':'var(--text-muted)'}">${seats.length}/${cap}</span>` : ''}
             ${isEditor?`<button class="del-btn" style="font-size:14px" onclick="window._deleteTable('${tid}')">×</button>`:''}
           </div>
         </div>
-        <div class="table-seats">
+        ${bodyOpen ? `<div class="table-seats">
           <div class="table-drop-zone" id="dz-${tid}">
             ${seats.map(([sid,seat]) => {
               const avCls = seat.side === 'gelin' ? 'avatar-gelin' : 'avatar-damat';
@@ -938,26 +981,49 @@
               </div>`;
             }).join('')}
           </div>
-        </div>
+        </div>` : ''}
       </div>`;
     }).join('') || `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted);font-size:13px">Henüz masa eklenmedi. "Masa Ekle" ile başlayın.</div>`;
 
     // Return-to-pool drop zone
-    document.getElementById('unassigned-pool').ondragover = (e) => {
-      if (dragData?.fromTable) { e.preventDefault(); document.getElementById('unassigned-pool').style.outline = '2px dashed var(--gold)'; }
+    const poolEl = document.getElementById('unassigned-pool');
+    poolEl.ondragover = (e) => {
+      if (dragData?.fromTable) { e.preventDefault(); poolEl.style.outline = '2px dashed var(--gold)'; }
     };
-    document.getElementById('unassigned-pool').ondragleave = () => {
-      document.getElementById('unassigned-pool').style.outline = '';
-    };
-    document.getElementById('unassigned-pool').ondrop = (e) => {
-      e.preventDefault();
-      document.getElementById('unassigned-pool').style.outline = '';
+    poolEl.ondragleave = () => { poolEl.style.outline = ''; };
+    poolEl.ondrop = (e) => {
+      e.preventDefault(); poolEl.style.outline = '';
       if (!dragData?.fromTable || !isEditor) return;
       setSyncing('syncing');
       remove(ref(db, `tables/${dragData.fromTable}/seats/${dragData.id}`)).then(() => setSyncing('saved'));
       dragData = null;
     };
   }
+
+  window._togglePoolGroup = function(gid) {
+    poolCollapsed[gid] = !poolCollapsed[gid];
+    renderTables();
+  };
+  window._togglePoolSide = function(side) {
+    poolSideCollapsed[side] = !poolSideCollapsed[side];
+    renderTables();
+  };
+  window._toggleTableBody = function(tid) {
+    tableBodyCollapsed[tid] = !tableBodyCollapsed[tid];
+    renderTables();
+  };
+  window._updateTableName = function(tid, val) {
+    if (!isEditor || !val.trim()) return;
+    setSyncing('syncing');
+    update(ref(db, `tables/${tid}`), { name: val.trim() }).then(() => setSyncing('saved'));
+  };
+  window._updateTableCap = function(tid, val) {
+    if (!isEditor) return;
+    const cap = Math.max(1, parseInt(val)||1);
+    setSyncing('syncing');
+    update(ref(db, `tables/${tid}`), { capacity: cap }).then(() => setSyncing('saved'));
+  };
+
 
   // DRAG & DROP — TABLES
   window._dragStart = function(e, id, name, side, fromTable) {
