@@ -311,6 +311,7 @@
     </div>
     <span class="sync-indicator" id="sync-indicator">●</span>
     <div class="role-badge viewer" id="role-badge" onclick="toggleRole()" style="margin-left:auto">👁 İzleyici</div>
+    <button id="log-btn" onclick="showLog()" style="display:none;background:rgba(201,169,110,.15);border:1px solid rgba(201,169,110,.3);color:var(--gold-light);border-radius:20px;padding:4px 10px;font-size:11px;cursor:pointer">📋 Geçmiş</button>
   </div>
   <div class="countdown" id="countdown"></div>
 </div>
@@ -574,16 +575,36 @@
 </div>
 
 <div class="modal-overlay" id="pw-modal">
-  <div class="modal-box" style="max-width:320px">
-    <div class="modal-title">Editör Şifresi</div>
+  <div class="modal-box" style="max-width:340px">
+    <div class="modal-title">Giriş Yap</div>
+    <div class="form-group">
+      <label class="form-label">Kullanıcı</label>
+      <select class="form-select" id="pw-user">
+        <option value="">— Seçin —</option>
+        <option value="Seyma">🌸 Şeyma (Gelin Tarafı)</option>
+        <option value="Mustafa">💙 Mustafa (Damat Tarafı)</option>
+        <option value="Superman">⭐ Superman (Süper Admin)</option>
+      </select>
+    </div>
     <div class="form-group">
       <label class="form-label">Şifre</label>
       <input class="form-input" type="password" id="pw-input" placeholder="••••••••" onkeydown="pwKeydown(event)">
-      <div id="pw-error" style="display:none;margin-top:8px;font-size:12px;color:#991B1B;background:#FEE2E2;border-radius:6px;padding:6px 10px">Yanlış şifre. Tekrar deneyin.</div>
+      <div id="pw-error" style="display:none;margin-top:8px;font-size:12px;color:#991B1B;background:#FEE2E2;border-radius:6px;padding:6px 10px">Kullanıcı adı veya şifre hatalı.</div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('pw-modal')">İptal</button>
       <button class="btn-save" onclick="submitPassword()">Giriş</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVITY LOG MODAL -->
+<div class="modal-overlay" id="log-modal">
+  <div class="modal-box" style="max-width:480px;max-height:80vh;overflow-y:auto">
+    <div class="modal-title">Değişiklik Geçmişi</div>
+    <div id="log-content" style="font-size:13px"></div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-cancel" onclick="closeModal('log-modal')">Kapat</button>
     </div>
   </div>
 </div>
@@ -606,9 +627,48 @@
   const db = getDatabase(app);
 
   let groups = {}, budget = { perPerson: 1500, extras: {} }, tables = {};
-  let isEditor = false, activeFilters = new Set(), currentSearch = '', collapsed = {};
+  let activeFilters = new Set(), currentSearch = '', collapsed = {};
   let weddingDate = new Date('2025-06-15T18:00:00');
   let dragData = null;
+
+  // ROLE SYSTEM
+  // currentRole: null | 'gelin' | 'damat' | 'super'
+  let currentRole = null;
+  let currentUser = null;
+
+  const USERS = {
+    'Seyma':    { password: 'Mustafa', role: 'gelin',  label: '🌸 Şeyma' },
+    'Mustafa':  { password: 'Seyma',   role: 'damat',  label: '💙 Mustafa' },
+    'Superman': { password: 'süpermen',role: 'super',  label: '⭐ Superman' },
+  };
+
+  function isEditor() { return currentRole !== null; }
+  function canEditSide(side) {
+    if (currentRole === 'super') return true;
+    if (currentRole === 'gelin' && side === 'gelin') return true;
+    if (currentRole === 'damat' && side === 'damat') return true;
+    return false;
+  }
+  function canEditBudget() { return currentRole !== null; }
+  function canEditTables() { return currentRole !== null; }
+  function canEditTableSeat(side) {
+    if (currentRole === 'super') return true;
+    if (currentRole === 'gelin' && side === 'gelin') return true;
+    if (currentRole === 'damat' && side === 'damat') return true;
+    return false;
+  }
+  function isSuperAdmin() { return currentRole === 'super'; }
+
+  function logAction(action, detail) {
+    if (!currentUser) return;
+    push(ref(db, 'activity_log'), {
+      user: currentUser,
+      role: currentRole,
+      action,
+      detail,
+      timestamp: Date.now()
+    });
+  }
 
   // COUNTDOWN
   function updateCountdown() {
@@ -667,14 +727,14 @@
   function statusBadge(s, gid, mid) {
     const cls = s === 'coming' ? 'badge-coming' : s === 'maybe' ? 'badge-maybe' : 'badge-no';
     const lbl = s === 'coming' ? '✓ Gelecek' : s === 'maybe' ? '? Belki' : '✗ Gelmeyecek';
-    const clk = isEditor ? `onclick="window._cycleStatus('${gid}','${mid||''}')" style="cursor:pointer"` : 'style="cursor:default"';
+    const clk = isEditor() ? `onclick="window._cycleStatus('${gid}','${mid||''}')" style="cursor:pointer"` : 'style="cursor:default"';
     return `<span class="status-badge ${cls}" ${clk}>${lbl}</span>`;
   }
   function inviteBadge(invited, gid, mid) {
     const sent = invited === true;
     const cls = sent ? 'invite-sent' : 'invite-pending';
     const lbl = sent ? '✉ Gönderildi' : '○ Bekliyor';
-    const clk = isEditor ? `onclick="window._toggleInvite('${gid}','${mid||''}')" style="cursor:pointer"` : 'style="cursor:default"';
+    const clk = isEditor() ? `onclick="window._toggleInvite('${gid}','${mid||''}')" style="cursor:pointer"` : 'style="cursor:default"';
     return `<span class="invite-badge ${cls}" ${clk}>${lbl}</span>`;
   }
 
@@ -750,7 +810,7 @@
       <div style="flex:1"></div>
       <span style="font-size:10px;color:var(--text-muted);width:70px;text-align:center;text-transform:uppercase;letter-spacing:.5px">Katılım</span>
       <span style="font-size:10px;color:var(--text-muted);width:86px;text-align:center;text-transform:uppercase;letter-spacing:.5px">Davetiye Durumu</span>
-      ${isEditor?'<span style="width:36px"></span>':''}
+      ${canEditSide(side)?'<span style="width:36px"></span>':''}
     </div>` : '';
     let html = colHeader;
     // sort by order field
@@ -769,29 +829,29 @@
       for (let i = 0; i < visMems.length; i++) {
         const [mid, m] = visMems[i];
         const last = i === visMems.length-1;
-        const dragAttrs = isEditor ? `draggable="true"
+        const dragAttrs = canEditSide(side) ? `draggable="true"
           ondragstart="window._memberDragStart(event,'${gid}','${mid}')"
           ondragend="window._memberDragEnd(event)"
           ondragover="window._memberDragOver(event,'${gid}','${mid}')"
           ondragleave="window._memberDragLeave(event)"
           ondrop="window._memberDrop(event,'${gid}','${mid}')"` : '';
         mHtml += `<div class="member-row" data-gid="${gid}" data-mid="${mid}" ${dragAttrs}>
-          ${isEditor?`<span class="drag-handle" title="Taşı">⠿</span>`:'<div class="tree-line'+( last&&!isEditor?'':' branch')+'"></div>'}
+          ${canEditSide(side)?`<span class="drag-handle" title="Taşı">⠿</span>`:'<div class="tree-line'+( last&&!canEditSide(side)?'':' branch')+'"></div>'}
           <div class="member-avatar ${avCls}" style="width:24px;height:24px;font-size:10px;margin-right:6px">${initials(m.name)}</div>
           <div class="member-info"><div class="member-name">${m.name}</div><div class="member-relation">${m.relation||''}</div></div>
           ${statusBadge(m.status,gid,mid)}
           ${inviteBadge(m.invited,gid,mid)}
-          ${isEditor?`<button class="edit-btn" onclick="window._editMember('${gid}','${mid}')" title="Düzenle">✎</button><button class="del-btn" onclick="window._deleteMember('${gid}','${mid}')">×</button>`:''}
+          ${canEditSide(side)?`<button class="edit-btn" onclick="window._editMember('${gid}','${mid}')" title="Düzenle">✎</button><button class="del-btn" onclick="window._deleteMember('${gid}','${mid}')">×</button>`:''}
         </div>`;
       }
       // cross-group drop zone at bottom of members list
-      const dropZone = isEditor && open ? `<div class="members-drop-zone" data-target-gid="${gid}"
+      const dropZone = canEditSide(side) && open ? `<div class="members-drop-zone" data-target-gid="${gid}"
         ondragover="window._groupDropZoneOver(event,'${gid}')"
         ondragleave="window._groupDropZoneLeave(event)"
         ondrop="window._groupDropZoneDrop(event,'${gid}')"></div>` : '';
-      if (isEditor && open) mHtml += `<div style="padding:6px 10px 8px 32px"><button class="add-member-btn" onclick="window._openMemberModal('${gid}')">+ Üye Ekle</button></div>`;
+      if (canEditSide(side) && open) mHtml += `<div style="padding:6px 10px 8px 32px"><button class="add-member-btn" onclick="window._openMemberModal('${gid}')">+ Üye Ekle</button></div>`;
 
-      const groupDragAttrs = isEditor ? `draggable="true"
+      const groupDragAttrs = canEditSide(side) ? `draggable="true"
         ondragstart="window._groupDragStart(event,'${gid}','${side}')"
         ondragend="window._groupDragEnd(event)"
         ondragover="window._groupDragOver(event,'${gid}')"
@@ -800,7 +860,7 @@
 
       html += `<div class="family-group" data-gid="${gid}" ${groupDragAttrs}>
         <div class="family-head" onclick="window._toggleGroup('${gid}')">
-          ${isEditor?`<span class="drag-handle" onclick="event.stopPropagation()" title="Grubu Taşı">⠿</span>`:''}
+          ${canEditSide(side)?`<span class="drag-handle" onclick="event.stopPropagation()" title="Grubu Taşı">⠿</span>`:''}
           <span class="chevron ${open?'open':''}">›</span>
           <div class="member-avatar ${avCls}" style="margin-right:7px">${initials(g.headName)}</div>
           <div class="family-head-info">
@@ -813,7 +873,7 @@
           <div style="display:flex;align-items:center;gap:5px" onclick="event.stopPropagation()">
             ${statusBadge(g.status,gid,null)}
             ${inviteBadge(g.invited,gid,null)}
-            ${isEditor?`<button class="edit-btn" onclick="window._editGroup('${gid}')" title="Düzenle">✎</button><button class="del-btn" onclick="window._deleteGroup('${gid}')">×</button>`:''}
+            ${canEditSide(side)?`<button class="edit-btn" onclick="window._editGroup('${gid}')" title="Düzenle">✎</button><button class="del-btn" onclick="window._deleteGroup('${gid}')">×</button>`:''}
           </div>
         </div>
         ${open?`<div>${mHtml}${dropZone}</div>`:''}
@@ -907,18 +967,18 @@
         const avCls = g.side === 'gelin' ? 'avatar-gelin' : 'avatar-damat';
         const allGroupIds = [gid+'__head', ...Object.keys(g.members||{}).map(mid=>gid+'__'+mid)];
         const allUnassigned = allGroupIds.filter(id => !assignedIds.has(id));
-        const groupDraggable = isEditor && allUnassigned.length === allGroupIds.length;
+        const groupDraggable = isEditor() && allUnassigned.length === allGroupIds.length;
         const groupOpen = poolCollapsed[gid] !== true;
-        return `<div class="pool-group" ${groupDraggable&&isEditor ? `draggable="true" ondragstart="window._poolGroupDragStart(event,'${gid}')" ondragend="window._dragEnd(event)"` : ''}>
+        return `<div class="pool-group" ${groupDraggable&&isEditor() ? `draggable="true" ondragstart="window._poolGroupDragStart(event,'${gid}')" ondragend="window._dragEnd(event)"` : ''}>
           <div class="pool-group-header" onclick="window._togglePoolGroup('${gid}')"
-            style="cursor:${groupDraggable&&isEditor?'grab':'pointer'};justify-content:space-between">
+            style="cursor:${groupDraggable&&isEditor()?'grab':'pointer'};justify-content:space-between">
             <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
               <span class="col-chevron ${groupOpen?'open':''}" style="font-size:14px" onclick="window._togglePoolGroup('${gid}');event.stopPropagation()">›</span>
               <div class="member-avatar ${avCls}" style="width:18px;height:18px;font-size:8px;border-width:1px;flex-shrink:0">${initials(g.headName)}</div>
               <span style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.headName}</span>
               <span style="font-size:11px;color:var(--text-muted);flex-shrink:0">(${people.length} kişi)</span>
             </div>
-            ${groupDraggable&&isEditor ? `<span style="font-size:14px;opacity:.5;flex-shrink:0">⠿</span>` : ''}
+            ${groupDraggable&&isEditor() ? `<span style="font-size:14px;opacity:.5;flex-shrink:0">⠿</span>` : ''}
           </div>
           ${groupOpen ? `<div class="pool-group-members">
             ${people.map(p => `<div class="unassigned-chip" draggable="true"
@@ -959,18 +1019,18 @@
         ondragleave="window._tableCardDragLeave(event)"
         ondrop="window._drop(event,'${tid}')">
         <div class="table-card-header"
-          ${isEditor ? `draggable="true" ondragstart="window._tableDragStart(event,'${tid}')" ondragend="window._tableDragEnd(event)"` : ''}
+          ${isEditor() ? `draggable="true" ondragstart="window._tableDragStart(event,'${tid}')" ondragend="window._tableDragEnd(event)"` : ''}
           ondragover="window._tableHeaderDragOver(event,'${tid}')"
           ondragleave="window._tableHeaderDragLeave(event)"
           ondrop="window._tableHeaderDrop(event,'${tid}')">
           <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;cursor:pointer" onclick="window._toggleTableBody('${tid}')">
-            ${isEditor ? `<span class="drag-handle" style="opacity:.5;font-size:16px;cursor:grab" onclick="event.stopPropagation()">⠿</span>` : ''}
+            ${isEditor() ? `<span class="drag-handle" style="opacity:.5;font-size:16px;cursor:grab" onclick="event.stopPropagation()">⠿</span>` : ''}
             <span class="col-chevron ${bodyOpen?'open':''}" style="font-size:14px">›</span>
             <span class="table-card-name" style="flex:1">${t.name}</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:12px;color:${full?'#991B1B':'var(--text-muted)'}">${seats.length}/${cap}</span>
-            ${isEditor ? `<button class="edit-btn" style="font-size:16px" onclick="window._openEditTableModal('${tid}')" title="Düzenle">✎</button>` : ''}
+            ${isEditor() ? `<button class="edit-btn" style="font-size:16px" onclick="window._openEditTableModal('${tid}')" title="Düzenle">✎</button>` : ''}
           </div>
         </div>
         ${bodyOpen ? `<div class="table-seats">
@@ -981,7 +1041,7 @@
               const leaderName = detached ? getGroupLeaderName(sid) : '';
               const isSelf = sid.endsWith('__head');
               const showParent = detached && !isSelf;
-              return `<div class="seat-item" draggable="${isEditor}"
+              return `<div class="seat-item" draggable="${isEditor()}"
                 ondragstart="window._dragStart(event,'${sid}','${seat.name}','${seat.side}','${tid}')"
                 ondragend="window._dragEnd(event)">
                 <div class="member-avatar ${avCls}" style="width:22px;height:22px;font-size:9px;border-width:1px">${initials(seat.name)}</div>
@@ -989,7 +1049,7 @@
                   <div class="seat-name">${seat.name}</div>
                   ${showParent ? `<div style="font-size:10px;color:var(--text-muted)">(${leaderName})</div>` : ''}
                 </div>
-                ${isEditor?`<button class="seat-remove" onclick="window._removeSeat('${tid}','${sid}')">×</button>`:''}
+                ${isEditor()?`<button class="seat-remove" onclick="window._removeSeat('${tid}','${sid}')">×</button>`:''}
               </div>`;
             }).join('')}
           </div>
@@ -1005,7 +1065,7 @@
     poolEl.ondragleave = () => { poolEl.style.outline = ''; };
     poolEl.ondrop = (e) => {
       e.preventDefault(); poolEl.style.outline = '';
-      if (!dragData?.fromTable || !isEditor) return;
+      if (!dragData?.fromTable || !isEditor()) return;
       setSyncing('syncing');
       remove(ref(db, `tables/${dragData.fromTable}/seats/${dragData.id}`)).then(() => setSyncing('saved'));
       dragData = null;
@@ -1025,7 +1085,7 @@
     renderTables();
   };
   window._openEditTableModal = function(tid) {
-    if (!isEditor) return;
+    if (!canEditTables()) return;
     const t = tables[tid];
     if (!t) return;
     document.getElementById('edit-table-id').value = tid;
@@ -1034,6 +1094,7 @@
     document.getElementById('edit-table-modal').classList.add('open');
   };
   window.updateTable = function() {
+    if (!canEditTables()) return;
     const tid = document.getElementById('edit-table-id').value;
     const name = document.getElementById('edit-table-name').value.trim();
     const cap = Math.max(1, parseInt(document.getElementById('edit-table-cap').value)||1);
@@ -1043,14 +1104,14 @@
   };
   window._deleteTableFromModal = function() {
     const tid = document.getElementById('edit-table-id').value;
-    if (!isEditor || !tid) return;
+    if (!canEditTables() || !tid) return;
     if (confirm('Bu masayı silmek istediğinizden emin misiniz?')) {
       setSyncing('syncing');
       remove(ref(db, `tables/${tid}`)).then(() => { setSyncing('saved'); closeModal('edit-table-modal'); });
     }
   };
   window._deleteTable = function(tid) {
-    if (!isEditor) return;
+    if (!canEditTables()) return;
     if (confirm('Bu masayı silmek istediğinizden emin misiniz?')) {
       setSyncing('syncing');
       remove(ref(db, `tables/${tid}`)).then(() => setSyncing('saved'));
@@ -1082,7 +1143,7 @@
   };
   window._tableHeaderDrop = function(e, targetTid) {
     e.preventDefault(); e.stopPropagation();
-    if (!dragTid || dragTid === targetTid || !isEditor) return;
+    if (!dragTid || dragTid === targetTid || !isEditor()) return;
     const el = document.querySelector(`.table-card[data-tid="${targetTid}"]`);
     const rect = el ? el.getBoundingClientRect() : null;
     const insertBefore = rect ? e.clientX < rect.left + rect.width/2 : false;
@@ -1121,7 +1182,7 @@
   window._drop = function(e, tid) {
     e.preventDefault(); e.stopPropagation();
     document.querySelectorAll('.table-card').forEach(c => c.classList.remove('drag-over'));
-    if (!isEditor || !dragData) return;
+    if (!isEditor() || !dragData) return;
     const t = tables[tid];
     if (!t) return;
 
@@ -1156,12 +1217,13 @@
     e.dataTransfer.effectAllowed = 'move';
   };
   window._removeSeat = function(tid, sid) {
-    if (!isEditor) return;
+    const seat = Object.values(tables).flatMap(t=>Object.entries(t.seats||{})).find(([id])=>id===sid);
+    if (!canEditTableSeat(seat?.[1]?.side)) return;
     setSyncing('syncing');
     remove(ref(db, `tables/${tid}/seats/${sid}`)).then(() => setSyncing('saved'));
   };
   window._deleteTable = function(tid) {
-    if (!isEditor) return;
+    if (!canEditTables()) return;
     if (confirm('Bu masayı silmek istediğinizden emin misiniz?')) {
       setSyncing('syncing');
       remove(ref(db, `tables/${tid}`)).then(() => setSyncing('saved'));
@@ -1170,27 +1232,36 @@
 
   // FIREBASE WRITES — GUESTS
   window._cycleStatus = function(gid, mid) {
-    if (!isEditor) return;
+    const side = groups[gid]?.side;
+    if (!canEditSide(side)) return;
     setSyncing('syncing');
     if (!mid) {
-      update(ref(db, `groups/${gid}`), { status: nextStatus(groups[gid].status) }).then(() => setSyncing('saved'));
+      const newStatus = nextStatus(groups[gid].status);
+      update(ref(db, `groups/${gid}`), { status: newStatus }).then(() => setSyncing('saved'));
+      logAction('durum değiştirildi', `${groups[gid].headName} → ${newStatus}`);
     } else {
-      update(ref(db, `groups/${gid}/members/${mid}`), { status: nextStatus(groups[gid].members[mid].status) }).then(() => setSyncing('saved'));
+      const newStatus = nextStatus(groups[gid].members[mid].status);
+      update(ref(db, `groups/${gid}/members/${mid}`), { status: newStatus }).then(() => setSyncing('saved'));
+      logAction('durum değiştirildi', `${groups[gid].members[mid].name} → ${newStatus}`);
     }
   };
   window._toggleInvite = function(gid, mid) {
-    if (!isEditor) return;
+    const side = groups[gid]?.side;
+    if (!canEditSide(side)) return;
     setSyncing('syncing');
     if (!mid) {
       const cur = groups[gid].invited === true;
       update(ref(db, `groups/${gid}`), { invited: !cur }).then(() => setSyncing('saved'));
+      logAction('davetiye güncellendi', `${groups[gid].headName} → ${!cur ? 'gönderildi' : 'bekliyor'}`);
     } else {
       const cur = groups[gid].members[mid].invited === true;
       update(ref(db, `groups/${gid}/members/${mid}`), { invited: !cur }).then(() => setSyncing('saved'));
+      logAction('davetiye güncellendi', `${groups[gid].members[mid].name} → ${!cur ? 'gönderildi' : 'bekliyor'}`);
     }
   };
   window._editGroup = function(gid) {
-    if (!isEditor) return;
+    const side = groups[gid]?.side;
+    if (!canEditSide(side)) return;
     const g = groups[gid];
     document.getElementById('edit-group-id').value = gid;
     document.getElementById('edit-head-name').value = g.headName || '';
@@ -1205,12 +1276,16 @@
     const relation = document.getElementById('edit-head-relation').value.trim();
     const category = document.getElementById('edit-head-category').value;
     const status = document.getElementById('edit-head-status').value;
-    if (!headName) return;
+    const side = groups[gid]?.side;
+    if (!headName || !canEditSide(side)) return;
     setSyncing('syncing');
-    update(ref(db, `groups/${gid}`), { headName, relation, category, status }).then(() => { setSyncing('saved'); closeModal('edit-group-modal'); });
+    update(ref(db, `groups/${gid}`), { headName, relation, category, status }).then(() => {
+      setSyncing('saved'); closeModal('edit-group-modal');
+      logAction('grup düzenlendi', headName);
+    });
   };
   window._editMember = function(gid, mid) {
-    if (!isEditor) return;
+    if (!canEditSide(groups[gid]?.side)) return;
     const m = groups[gid].members[mid];
     document.getElementById('edit-member-gid').value = gid;
     document.getElementById('edit-member-mid').value = mid;
@@ -1225,9 +1300,13 @@
     const name = document.getElementById('edit-member-name').value.trim();
     const relation = document.getElementById('edit-member-relation').value.trim();
     const status = document.getElementById('edit-member-status').value;
-    if (!name) return;
+    const side = groups[gid]?.side;
+    if (!name || !canEditSide(side)) return;
     setSyncing('syncing');
-    update(ref(db, `groups/${gid}/members/${mid}`), { name, relation, status }).then(() => { setSyncing('saved'); closeModal('edit-member-modal'); });
+    update(ref(db, `groups/${gid}/members/${mid}`), { name, relation, status }).then(() => {
+      setSyncing('saved'); closeModal('edit-member-modal');
+      logAction('üye düzenlendi', name);
+    });
   };
   // ---- DRAG & DROP — GROUPS ----
   let dragGid = null, dragSide = null;
@@ -1269,7 +1348,7 @@
   };
   window._groupDrop = function(e, targetGid, targetSide) {
     e.preventDefault(); e.stopPropagation();
-    if (!dragGid || dragGid === targetGid || !isEditor) return;
+    if (!dragGid || dragGid === targetGid || !isEditor()) return;
     const el = document.querySelector(`.family-group[data-gid="${targetGid}"]`);
     const rect = el ? el.getBoundingClientRect() : null;
     const insertBefore = rect ? e.clientY < rect.top + rect.height / 2 : false;
@@ -1314,7 +1393,7 @@
   };
   window._memberDrop = function(e, targetGid, targetMid) {
     e.preventDefault(); e.stopPropagation();
-    if (!dragMid || !isEditor) return;
+    if (!dragMid || !isEditor()) return;
     const el = document.querySelector(`.member-row[data-gid="${targetGid}"][data-mid="${targetMid}"]`);
     const rect = el ? el.getBoundingClientRect() : null;
     const insertBefore = rect ? e.clientY < rect.top + rect.height / 2 : false;
@@ -1359,7 +1438,7 @@
   };
   window._groupDropZoneDrop = function(e, targetGid) {
     e.preventDefault(); e.stopPropagation();
-    if (!dragMid || !isEditor) return;
+    if (!dragMid || !isEditor()) return;
     e.currentTarget?.classList.remove('drag-over');
     if (dragMGid === targetGid) return;
     const memberData = { ...groups[dragMGid].members[dragMid] };
@@ -1372,19 +1451,25 @@
   };
 
   window._deleteGroup = function(gid) {
-    if (!isEditor) return;
-    if (confirm('Bu grubu silmek istediğinizden emin misiniz?')) { setSyncing('syncing'); remove(ref(db, `groups/${gid}`)).then(() => setSyncing('saved')); }
+    const side = groups[gid]?.side;
+    if (!canEditSide(side)) return;
+    if (confirm('Bu grubu silmek istediğinizden emin misiniz?')) {
+      logAction('grup silindi', groups[gid].headName);
+      setSyncing('syncing'); remove(ref(db, `groups/${gid}`)).then(() => setSyncing('saved'));
+    }
   };
   window._deleteMember = function(gid, mid) {
-    if (!isEditor) return;
+    const side = groups[gid]?.side;
+    if (!canEditSide(side)) return;
+    logAction('üye silindi', `${groups[gid].members[mid]?.name} (${groups[gid].headName})`);
     setSyncing('syncing'); remove(ref(db, `groups/${gid}/members/${mid}`)).then(() => setSyncing('saved'));
   };
   window._deleteExtra = function(eid) {
-    if (!isEditor) return;
+    if (!canEditBudget()) return;
     setSyncing('syncing'); remove(ref(db, `budget/extras/${eid}`)).then(() => setSyncing('saved'));
   };
   window._updateExtraAmount = function(eid, val) {
-    if (!isEditor) return;
+    if (!canEditBudget()) return;
     setSyncing('syncing'); update(ref(db, `budget/extras/${eid}`), { amount: parseFloat(val)||0 }).then(() => setSyncing('saved'));
   };
   window._toggleGroup = function(gid) {
@@ -1404,20 +1489,28 @@
     const status = document.getElementById('inp-head-status').value;
     const category = document.getElementById('inp-head-category').value;
     const side = document.getElementById('modal-side').value;
-    if (!name) return;
+    if (!name || !canEditSide(side)) return;
     setSyncing('syncing');
-    push(ref(db,'groups'), { side, headName: name, relation: rel||'Aile', status, category, invited: false, members: {} }).then(() => { setSyncing('saved'); closeModal('add-modal'); });
+    push(ref(db,'groups'), { side, headName: name, relation: rel||'Aile', status, category, invited: false, members: {} }).then(() => {
+      setSyncing('saved'); closeModal('add-modal');
+      logAction('grup eklendi', `${name} (${side} tarafı)`);
+    });
   };
   window.saveMember = function() {
     const gid = document.getElementById('member-group-id').value;
     const name = document.getElementById('inp-member-name').value.trim();
     const rel = document.getElementById('inp-member-relation').value.trim();
     const status = document.getElementById('inp-member-status').value;
-    if (!name) return;
+    const side = groups[gid]?.side;
+    if (!name || !canEditSide(side)) return;
     setSyncing('syncing');
-    push(ref(db,`groups/${gid}/members`), { name, relation: rel, status, invited: false }).then(() => { setSyncing('saved'); closeModal('member-modal'); });
+    push(ref(db,`groups/${gid}/members`), { name, relation: rel, status, invited: false }).then(() => {
+      setSyncing('saved'); closeModal('member-modal');
+      logAction('üye eklendi', `${name} → ${groups[gid]?.headName}`);
+    });
   };
   window.saveExtra = function() {
+    if (!canEditBudget()) return;
     const name = document.getElementById('inp-extra-name').value.trim();
     const amount = parseFloat(document.getElementById('inp-extra-amount').value)||0;
     if (!name) return;
@@ -1427,14 +1520,18 @@
     push(ref(db,'budget/extras'), { name, amount, icon }).then(() => { setSyncing('saved'); closeModal('extra-modal'); });
   };
   window.saveTable = function() {
+    if (!canEditTables()) return;
     const name = document.getElementById('inp-table-name').value.trim();
     const cap = parseInt(document.getElementById('inp-table-cap').value)||10;
     if (!name) return;
     setSyncing('syncing');
-    push(ref(db,'tables'), { name, capacity: cap, seats: {} }).then(() => { setSyncing('saved'); closeModal('table-modal'); });
+    push(ref(db,'tables'), { name, capacity: cap, seats: {} }).then(() => {
+      setSyncing('saved'); closeModal('table-modal');
+      logAction('masa eklendi', name);
+    });
   };
   window.saveBudgetField = function(field, val) {
-    if (!isEditor) return;
+    if (!canEditBudget()) return;
     setSyncing('syncing'); update(ref(db,'budget'), { [field]: parseFloat(val)||0 }).then(() => setSyncing('saved'));
     updateBudgetCalc();
   };
@@ -1446,9 +1543,9 @@
     for (const [eid,ex] of Object.entries(budget.extras||{})) {
       html += `<div class="extra-item" data-id="${eid}">
         <span class="extra-name">${ex.icon||'💍'} ${ex.name}</span>
-        <input class="budget-input-field" type="number" value="${ex.amount}" oninput="window._updateExtraAmount('${eid}',this.value)" style="width:100px;margin-top:0" ${isEditor?'':'disabled'}>
+        <input class="budget-input-field" type="number" value="${ex.amount}" oninput="window._updateExtraAmount('${eid}',this.value)" style="width:100px;margin-top:0" ${isEditor()?'':'disabled'}>
         <span class="extra-amount">${formatTL(ex.amount)}</span>
-        ${isEditor?`<button onclick="window._deleteExtra('${eid}')" class="del-btn">×</button>`:''}
+        ${isEditor()?`<button onclick="window._deleteExtra('${eid}')" class="del-btn">×</button>`:''}
       </div>`;
     }
     list.innerHTML = html;
@@ -1485,45 +1582,77 @@
     document.getElementById('table-modal').classList.add('open');
   };
   window.addExtra = function() {
-    if (!isEditor) return;
+    if (!canEditBudget()) return;
     document.getElementById('inp-extra-name').value = '';
     document.getElementById('inp-extra-amount').value = '';
     document.getElementById('extra-modal').classList.add('open');
   };
   window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
-  const EDITOR_PASSWORD = 'karakurt';
-  // Persist editor mode across page refreshes in same browser session
-  if (sessionStorage.getItem('editorMode') === '1') {
-    setTimeout(() => setEditorMode(true), 100);
+
+  // ── ROLE SYSTEM ──────────────────────────────────
+  const SESSION_KEY = 'weddingSession';
+
+  function setRole(username, role) {
+    currentUser = username;
+    currentRole = role;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ username, role }));
+    updateRoleBadge();
+    render(); renderTables(); renderExtras();
+    // show/hide add buttons based on role
+    updateAddButtons();
   }
 
-  function setEditorMode(on) {
-    isEditor = on;
-    sessionStorage.setItem('editorMode', on ? '1' : '0');
+  function updateAddButtons() {
+    const gelinAdd = document.getElementById('add-gelin-row');
+    const damatAdd = document.getElementById('add-damat-row');
+    const extraBtn = document.getElementById('add-extra-btn');
+    const tableBtn = document.getElementById('add-table-btn');
+    if (gelinAdd) gelinAdd.style.display = canEditSide('gelin') ? '' : 'none';
+    if (damatAdd) damatAdd.style.display = canEditSide('damat') ? '' : 'none';
+    if (extraBtn) extraBtn.style.display = canEditBudget() ? '' : 'none';
+    if (tableBtn) tableBtn.style.display = canEditTables() ? '' : 'none';
+  }
+
+  function updateRoleBadge() {
     const badge = document.getElementById('role-badge');
-    ['add-gelin-row','add-damat-row','add-extra-btn','add-table-btn'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = isEditor?'':'none'; });
-    badge.textContent = isEditor ? '✎ Editör Modu' : '👁 İzleyici';
-    badge.className = 'role-badge '+(isEditor?'editor':'viewer');
-    document.getElementById('viewer-notice').style.display = isEditor?'none':'flex';
-    render(); renderTables();
+    const notice = document.getElementById('viewer-notice');
+    const logBtn = document.getElementById('log-btn');
+    if (currentRole) {
+      const u = USERS[currentUser];
+      badge.textContent = u ? u.label : '✎ Editör';
+      badge.className = 'role-badge editor';
+      notice.style.display = 'none';
+    } else {
+      badge.textContent = '👁 İzleyici';
+      badge.className = 'role-badge viewer';
+      notice.style.display = 'flex';
+    }
+    if (logBtn) logBtn.style.display = isSuperAdmin() ? '' : 'none';
   }
 
   window.toggleRole = function() {
-    if (isEditor) {
-      setEditorMode(false);
+    if (currentRole) {
+      currentRole = null; currentUser = null;
+      sessionStorage.removeItem(SESSION_KEY);
+      updateRoleBadge(); updateAddButtons();
+      render(); renderTables(); renderExtras();
     } else {
+      document.getElementById('pw-user').value = '';
       document.getElementById('pw-input').value = '';
       document.getElementById('pw-error').style.display = 'none';
       document.getElementById('pw-modal').classList.add('open');
-      setTimeout(() => document.getElementById('pw-input').focus(), 100);
+      setTimeout(() => document.getElementById('pw-user').focus(), 100);
     }
   };
 
   window.submitPassword = function() {
-    const val = document.getElementById('pw-input').value;
-    if (val === EDITOR_PASSWORD) {
+    const username = document.getElementById('pw-user').value;
+    const password = document.getElementById('pw-input').value;
+    const user = USERS[username];
+    if (user && user.password === password) {
       closeModal('pw-modal');
-      setEditorMode(true);
+      setRole(username, user.role);
+      logAction('giriş', `${username} giriş yaptı`);
     } else {
       document.getElementById('pw-error').style.display = 'block';
       document.getElementById('pw-input').value = '';
@@ -1531,8 +1660,39 @@
     }
   };
 
-  window.pwKeydown = function(e) {
-    if (e.key === 'Enter') window.submitPassword();
+  window.pwKeydown = function(e) { if (e.key === 'Enter') window.submitPassword(); };
+
+  // Restore session
+  const saved = sessionStorage.getItem(SESSION_KEY);
+  if (saved) {
+    try {
+      const { username, role } = JSON.parse(saved);
+      if (USERS[username]) setTimeout(() => { setRole(username, role); }, 200);
+    } catch(e) {}
+  }
+
+  // Activity log
+  window.showLog = function() {
+    if (!isSuperAdmin()) return;
+    onValue(ref(db, 'activity_log'), snap => {
+      const logs = snap.val() || {};
+      const entries = Object.values(logs).sort((a,b) => b.timestamp - a.timestamp).slice(0, 100);
+      const html = entries.map(e => {
+        const d = new Date(e.timestamp);
+        const time = d.toLocaleDateString('tr-TR') + ' ' + d.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'});
+        const roleIcon = e.role === 'gelin' ? '🌸' : e.role === 'damat' ? '💙' : '⭐';
+        return `<div style="padding:8px 0;border-bottom:0.5px solid var(--border);display:flex;gap:10px;align-items:flex-start">
+          <span style="font-size:16px">${roleIcon}</span>
+          <div style="flex:1">
+            <div style="font-weight:500;color:var(--text)">${e.user} <span style="font-weight:400;color:var(--text-muted)">— ${e.action}</span></div>
+            <div style="color:var(--text-muted);font-size:12px;margin-top:2px">${e.detail}</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);white-space:nowrap">${time}</div>
+        </div>`;
+      }).join('') || '<div style="color:var(--text-muted);text-align:center;padding:20px">Henüz kayıt yok.</div>';
+      document.getElementById('log-content').innerHTML = html;
+    }, { onlyOnce: true });
+    document.getElementById('log-modal').classList.add('open');
   };
   window.toggleColumn = function(side) {
     const body = document.getElementById('col-body-'+side);
@@ -1606,7 +1766,7 @@
   }
 
   document.addEventListener('touchstart', function(e) {
-    if (!isEditor) return;
+    if (!isEditor()) return; // uses isEditor() function
     const handle = e.target.closest('.drag-handle');
     if (!handle) return;
     const row = handle.closest('.member-row');
